@@ -88,55 +88,163 @@ defaultRules:
 
 ## Configuration for alertmanager
 alertmanager:
+  enabled: true
   config:
     global:
       resolve_timeout: 5m
+      slack_api_url: 'https://hooks.slack.com/services/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' 
+    
+    templates:
+      - '/etc/alertmanager/config/*.tmpl'
+    
     route:
-      group_by: ['job']
-      group_wait: 30s
-      group_interval: 5m
+      group_by: ['alertname', 'cluster', 'service', 'severity']
+      group_wait: 10s
+      group_interval: 10s
       repeat_interval: 12h
-      receiver: 'slack'
+      receiver: 'default'
       routes:
-      - match:
-          alertname: Watchdog
-        receiver: 'null'
+        - match:
+            severity: critical
+          receiver: 'slack-critical'
+          continue: true
+        
+        - match:
+            severity: high
+          receiver: 'slack-high'
+          continue: true
+        
+        - match:
+            alertname: Watchdog
+          receiver: 'null'
+    
     inhibit_rules:
+      - source_match:
+          severity: 'critical'
+        target_match:
+          severity: 'warning'
+        equal: ['alertname', 'cluster', 'service']
+      
       - target_match_re:
-           alertname: '.+Overcommit'
+          alertname: '.+Overcommit'
         source_match:
-           alertname: 'Watchdog'
+          alertname: 'Watchdog'
         equal: ['prometheus']
+    
     receivers:
-    - name: 'null'
-    - name: 'slack'
-      slack_configs:
-      - api_url: '' # <--- AÑADIR AQUÍ TU WEBHOOK DE SLACK
-        send_resolved: true
-        channel: '#tu-canal-slack' # <--- AÑADIR AQUÍ TU CANAL
-        title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] Simple Server Monitoring Alert'
-        text: |-
-          {{ range .Alerts }}
-            *Alert:* {{ .Labels.alertname }} - `{{ .Labels.severity }}`
-            *Description:* {{ .Annotations.message }}
-            *Graph:* <{{ .GeneratorURL }}|:chart_with_upwards_trend:>
-            *Details:*
-            {{ range .Labels.SortedPairs }} • *{{ .Name }}:* `{{ .Value }}`
-            {{ end }}
-          {{ end }}
+      - name: 'null'
+      
+      - name: 'default'
+        slack_configs:
+          - channel: '#josepalenzuela-prometheus-alarms'  
+            send_resolved: true
+            title: |-
+              [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] Monitoring Event
+            text: >-
+              {{ range .Alerts -}}
+              *Alert:* {{ .Labels.alertname }} - `{{ .Labels.severity }}`
+              *Description:* {{ .Annotations.description }}
+              {{ if .Annotations.message }}*Message:* {{ .Annotations.message }}{{ end }}
+              *Details:*
+                {{ range .Labels.SortedPairs }} • *{{ .Name }}:* `{{ .Value }}`
+                {{ end }}
+              {{ end }}
+      
+      - name: 'slack-critical'
+        slack_configs:
+          - channel: '#josepalenzuela-prometheus-alarms'  
+            send_resolved: true
+            icon_emoji: ':fire:'
+            title: |-
+              [{{ .Status | toUpper }}]{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }} CRITICAL Alert - Simple Server
+            title_link: 'http://localhost:9093'
+            text: |-
+              {{ range .Alerts }}
+              {{- if .Annotations.summary }}*Summary:* {{ .Annotations.summary }}{{ end }}
+              *Alert:* `{{ .Labels.alertname }}`
+              *Severity:* `{{ .Labels.severity | toUpper }}`
+              {{- if .Annotations.description }}
+              *Description:* {{ .Annotations.description }}
+              {{- end }}
+              {{- if .Annotations.message }}
+              *Message:* {{ .Annotations.message }}
+              {{- end }}
+              *Status:* `{{ .Status }}`
+              *Started:* {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+              {{- if .EndsAt }}
+              *Ended:* {{ .EndsAt.Format "2006-01-02 15:04:05" }}
+              {{- end }}
+              *Details:*
+              {{ range .Labels.SortedPairs }}  • *{{ .Name }}:* `{{ .Value }}`
+              {{ end }}
+              *Graph:* <{{ .GeneratorURL }}|:chart_with_upwards_trend: View in Prometheus>
+              {{ end }}
+            color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+      
+      - name: 'slack-high'
+        slack_configs:
+          - channel: '#josepalenzuela-prometheus-alarms'  
+            send_resolved: true
+            icon_emoji: ':warning:'
+            title: |-
+              [{{ .Status | toUpper }}]{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }} HIGH Alert - Simple Server
+            title_link: 'http://localhost:9093'
+            text: |-
+              {{ range .Alerts }}
+              {{- if .Annotations.summary }}*Summary:* {{ .Annotations.summary }}{{ end }}
+              *Alert:* `{{ .Labels.alertname }}`
+              *Severity:* `{{ .Labels.severity | toUpper }}`
+              {{- if .Annotations.description }}
+              *Description:* {{ .Annotations.description }}
+              {{- end }}
+              {{- if .Annotations.message }}
+              *Message:* {{ .Annotations.message }}
+              {{- end }}
+              *Status:* `{{ .Status }}`
+              *Started:* {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+              {{- if .EndsAt }}
+              *Ended:* {{ .EndsAt.Format "2006-01-02 15:04:05" }}
+              {{- end }}
+              *Details:*
+              {{ range .Labels.SortedPairs }}  • *{{ .Name }}:* `{{ .Value }}`
+              {{ end }}
+              *Graph:* <{{ .GeneratorURL }}|:chart_with_upwards_trend: View in Prometheus>
+              {{ end }}
+            color: '{{ if eq .Status "firing" }}warning{{ else }}good{{ end }}'
 
-## Manages Prometheus and Alertmanager components
+  templateFiles:
+    simple-server.tmpl: |-
+      {{ define "slack.simple-server.title" }}
+      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] Simple Server Alert
+      {{ end }}
+      
+      {{ define "slack.simple-server.text" }}
+      {{ range .Alerts }}
+      *Alert:* {{ .Labels.alertname }} - `{{ .Labels.severity }}`
+      {{- if .Annotations.summary }}
+      *Summary:* {{ .Annotations.summary }}
+      {{- end }}
+      {{- if .Annotations.description }}
+      *Description:* {{ .Annotations.description }}
+      {{- end }}
+      {{- if .Annotations.message }}
+      *Message:* {{ .Annotations.message }}
+      {{- end }}
+      *Cluster:* {{ .Labels.cluster }}
+      *Namespace:* {{ .Labels.namespace }}
+      *Pod:* {{ .Labels.pod }}
+      {{ end }}
+      {{ end }}
+
 prometheusOperator:
   enabled: true
 
-## Custom Prometheus Rules for Simple Server
 additionalPrometheusRulesMap:
   simple-server-rules:
     groups:
       - name: simple_server_alerts
         interval: 30s
         rules:
-          # Alert when Simple Server pod is down
           - alert: SimpleServerDown
             expr: up{job="simple-server"} == 0
             for: 1m
@@ -145,9 +253,8 @@ additionalPrometheusRulesMap:
             annotations:
               summary: Simple Server is down
               description: "Simple Server instance {{ $labels.instance }} has been down for more than 1 minute."
-              message: "Simple Server pod {{ $labels.pod }} is down"
+              message: "Simple Server pod {{ $labels.pod }} is DOWN and not responding"
 
-          # Alert when container CPU usage exceeds limits
           - alert: SimpleServerCPUThrottlingHigh
             expr: |
               rate(container_cpu_cfs_throttled_periods_total{pod=~".*simple-server.*", container="simple-server"}[5m])
@@ -157,10 +264,9 @@ additionalPrometheusRulesMap:
               severity: critical
             annotations:
               summary: Simple Server CPU throttling is high
-              description: "Container {{ $labels.container }} in pod {{ $labels.pod }} is being throttled ({{ $value | humanizePercentage }} of the time)"
-              message: "Simple Server container {{ $labels.container }} in pod {{ $labels.pod }} CPU throttling is above 25%"
+              description: "Container {{ $labels.container }} in pod {{ $labels.pod }} is being throttled"
+              message: "Simple Server container {{ $labels.container }} CPU throttling is {{ $value | humanizePercentage }}"
 
-          # Alert when container memory usage exceeds requests
           - alert: SimpleServerConsumingMoreThanRequest
             expr: |
               avg(container_memory_usage_bytes{pod=~".*simple-server.*", container="simple-server"}) by (pod) 
@@ -171,9 +277,8 @@ additionalPrometheusRulesMap:
             annotations:
               summary: Simple Server consuming more memory than requested
               description: "Pod {{ $labels.pod }} is consuming more memory than requested"
-              message: "Pod {{ $labels.pod }} memory usage is above the requested amount"
+              message: "Pod {{ $labels.pod }} memory usage exceeds the requested amount"
 
-          # Alert when container CPU usage exceeds requests
           - alert: SimpleServerCPUConsumingMoreThanRequest
             expr: |
               avg(rate(container_cpu_usage_seconds_total{pod=~".*simple-server.*", container="simple-server"}[5m])) by (pod)
@@ -184,9 +289,8 @@ additionalPrometheusRulesMap:
             annotations:
               summary: Simple Server CPU usage above requested
               description: "Pod {{ $labels.pod }} is consuming more CPU than requested"
-              message: "Pod {{ $labels.pod }} CPU usage is above the requested amount"
+              message: "Pod {{ $labels.pod }} CPU usage is {{ $value }} (above requested)"
 
-          # Alert when container memory usage exceeds limits
           - alert: SimpleServerMemoryLimitReached
             expr: |
               avg(container_memory_usage_bytes{pod=~".*simple-server.*", container="simple-server"}) by (pod)
@@ -199,7 +303,6 @@ additionalPrometheusRulesMap:
               description: "Pod {{ $labels.pod }} is using more than 90% of its memory limit"
               message: "Pod {{ $labels.pod }} memory usage is at {{ $value | humanizePercentage }} of limit"
 
-          # Alert for high request rate
           - alert: SimpleServerHighRequestRate
             expr: rate(server_requests_total[5m]) > 100
             for: 5m
@@ -208,9 +311,8 @@ additionalPrometheusRulesMap:
             annotations:
               summary: Simple Server high request rate detected
               description: "Simple Server is receiving more than 100 requests per second"
-              message: "Request rate is {{ $value }} requests/second"
+              message: "Request rate is {{ $value | humanize }} requests/second"
 
-          # Alert when no requests received (possible issue)
           - alert: SimpleServerNoRequests
             expr: rate(server_requests_total[10m]) == 0
             for: 10m
@@ -219,9 +321,8 @@ additionalPrometheusRulesMap:
             annotations:
               summary: Simple Server not receiving requests
               description: "Simple Server hasn't received any requests in the last 10 minutes"
-              message: "No requests received in the last 10 minutes - possible connectivity issue"
+              message: "No requests received - possible connectivity issue"
 
-          # Alert for pod restart
           - alert: SimpleServerPodRestarting
             expr: rate(kube_pod_container_status_restarts_total{pod=~".*simple-server.*"}[15m]) > 0
             for: 5m
@@ -229,12 +330,22 @@ additionalPrometheusRulesMap:
               severity: high
             annotations:
               summary: Simple Server pod is restarting
-              description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in the last 15 minutes"
+              description: "Pod {{ $labels.pod }} has restarted in the last 15 minutes"
               message: "Pod {{ $labels.pod }} is restarting frequently"
 
 grafana:
   plugins:
     - grafana-piechart-panel
+  
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      folder: /tmp/dashboards
+      provider:
+        foldersFromFilesStructure: true
+  
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
@@ -247,24 +358,24 @@ grafana:
           editable: true
           options:
             path: /var/lib/grafana/dashboards/default
+  
   dashboards:
     default:
-      # Node Exporter dashboard
       node-exporter:
         gnetId: 11074
         revision: 9
         datasource: Prometheus
-      # Node Exporter Full dashboard
+      
       node-exporter-full:
         gnetId: 1860
         revision: 29
         datasource: Prometheus
-      # Kubernetes cluster monitoring
+      
       kubernetes-cluster:
         gnetId: 7249
         revision: 1
         datasource: Prometheus
-      # Pod monitoring
+      
       kubernetes-pods:
         gnetId: 6417
         revision: 1
