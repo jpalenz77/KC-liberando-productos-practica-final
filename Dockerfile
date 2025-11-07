@@ -1,16 +1,23 @@
 FROM python:3.11-alpine3.20
 
 WORKDIR /service/app
-ADD ./src/ /service/app/
+
+# Copy requirements first for better caching
 COPY requirements.txt /service/app/
 
-RUN apk --no-cache add curl build-base npm
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+# Install dependencies
+RUN apk --no-cache add curl build-base npm && \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt && \
+    apk del build-base
 
-EXPOSE 8081
+# Copy application code
+ADD ./src/ /service/app/
 
-ENV PYTHONUNBUFFERED 1
+# Expose ports
+EXPOSE 8081 8000
+
+ENV PYTHONUNBUFFERED=1
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=5 \
     CMD curl -s --fail http://localhost:8081/health || exit 1
