@@ -89,160 +89,109 @@ defaultRules:
 ## Configuration for alertmanager
 alertmanager:
   enabled: true
+  alertmanagerSpec:
+    replicas: 1
+    retention: 120h
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+    resources:
+      requests:
+        memory: 200Mi
+        cpu: 100m
+      limits:
+        memory: 400Mi
+        cpu: 200m
+
   config:
     global:
       resolve_timeout: 5m
-      slack_api_url: '' 
-    
+      # ⚠️ IMPORTANTE: NO commitear el webhook en el repositorio
+      # Se configura mediante --set durante helm install o helm upgrade:
+      #   --set alertmanager.config.global.slack_api_url='https://hooks.slack.com/services/XXX/YYY/ZZZ'
+      slack_api_url: ''
+
+    route:
+      receiver: 'slack-notifications'
+      group_by: ['alertname', 'severity', 'namespace']
+      group_wait: 10s
+      group_interval: 5m
+      repeat_interval: 12h
+      routes:
+        - matchers:
+            - alertname = "Watchdog"
+          receiver: 'null'
+        - matchers:
+            - severity =~ "critical|high"
+          receiver: 'slack-notifications'
+          continue: true
+
+    inhibit_rules:
+      - equal:
+          - namespace
+          - alertname
+        source_matchers:
+          - severity = critical
+        target_matchers:
+          - severity =~ warning|info
+      - equal:
+          - namespace
+          - alertname
+        source_matchers:
+          - severity = warning
+        target_matchers:
+          - severity = info
+      - equal:
+          - namespace
+        source_matchers:
+          - alertname = InfoInhibitor
+        target_matchers:
+          - severity = info
+
+    receivers:
+      - name: 'null'
+
+      - name: 'slack-notifications'
+        slack_configs:
+          - channel: '#josepalenzuela-prometheus-alarms'
+            send_resolved: true
+            icon_emoji: ':prometheus:'
+            title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] Simple Server Alert'
+            title_link: 'http://localhost:9093'
+            text: |-
+              {{ range .Alerts }}
+              *Alert:* `{{ .Labels.alertname }}`
+              *Severity:* `{{ .Labels.severity | toUpper }}`
+              {{ if .Annotations.summary }}*Summary:* {{ .Annotations.summary }}{{ end }}
+              {{ if .Annotations.description }}*Description:* {{ .Annotations.description }}{{ end }}
+              {{ if .Annotations.message }}*Message:* {{ .Annotations.message }}{{ end }}
+              *Namespace:* `{{ .Labels.namespace }}`
+              {{ if .Labels.pod }}*Pod:* `{{ .Labels.pod }}`{{ end }}
+              {{ if .Labels.instance }}*Instance:* `{{ .Labels.instance }}`{{ end }}
+              *Status:* `{{ .Status }}`
+              {{ if eq .Status "firing" }}*Started:* {{ .StartsAt.Format "2006-01-02 15:04:05" }}{{ end }}
+              {{ if eq .Status "resolved" }}*Resolved:* {{ .EndsAt.Format "2006-01-02 15:04:05" }}{{ end }}
+              {{ end }}
+            color: '{{ if eq .Status "firing" }}{{ if eq .CommonLabels.severity "critical" }}danger{{ else }}warning{{ end }}{{ else }}good{{ end }}'
+
     templates:
       - '/etc/alertmanager/config/*.tmpl'
-    
-    route:
-      group_by: ['alertname', 'cluster', 'service', 'severity']
-      group_wait: 10s
-      group_interval: 10s
-      repeat_interval: 12h
-      receiver: 'slack-default'
-      routes:
-        - match:
-            severity: critical
-          receiver: 'slack-critical'
-          continue: true
-        
-        - match:
-            severity: high
-          receiver: 'slack-high'
-          continue: true
-        
-        - match:
-            alertname: Watchdog
-          receiver: 'null'
-    
-    inhibit_rules:
-      - source_match:
-          severity: 'critical'
-        target_match:
-          severity: 'warning'
-        equal: ['alertname', 'cluster', 'service']
-      
-      - target_match_re:
-          alertname: '.+Overcommit'
-        source_match:
-          alertname: 'Watchdog'
-        equal: ['prometheus']
-    
-    receivers:      
-      - name: 'slack-default'
-        slack_configs:
-          - channel: '#josepalenzuela-prometheus-alarms'  
-            send_resolved: true
-            title: |-
-              [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] Monitoring Event
-            text: >-
-              {{ range .Alerts -}}
-              *Alert:* {{ .Labels.alertname }} - `{{ .Labels.severity }}`
-              *Description:* {{ .Annotations.description }}
-              {{ if .Annotations.message }}*Message:* {{ .Annotations.message }}{{ end }}
-              *Details:*
-                {{ range .Labels.SortedPairs }} • *{{ .Name }}:* `{{ .Value }}`
-                {{ end }}
-              {{ end }}
-      
-      - name: 'slack-critical'
-        slack_configs:
-          - channel: '#josepalenzuela-prometheus-alarms'  
-            send_resolved: true
-            icon_emoji: ':fire:'
-            title: |-
-              [{{ .Status | toUpper }}]{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }} CRITICAL Alert - Simple Server
-            title_link: 'http://localhost:9093'
-            text: |-
-              {{ range .Alerts }}
-              {{- if .Annotations.summary }}*Summary:* {{ .Annotations.summary }}{{ end }}
-              *Alert:* `{{ .Labels.alertname }}`
-              *Severity:* `{{ .Labels.severity | toUpper }}`
-              {{- if .Annotations.description }}
-              *Description:* {{ .Annotations.description }}
-              {{- end }}
-              {{- if .Annotations.message }}
-              *Message:* {{ .Annotations.message }}
-              {{- end }}
-              *Status:* `{{ .Status }}`
-              *Started:* {{ .StartsAt.Format "2006-01-02 15:04:05" }}
-              {{- if .EndsAt }}
-              *Ended:* {{ .EndsAt.Format "2006-01-02 15:04:05" }}
-              {{- end }}
-              *Details:*
-              {{ range .Labels.SortedPairs }}  • *{{ .Name }}:* `{{ .Value }}`
-              {{ end }}
-              *Graph:* <{{ .GeneratorURL }}|:chart_with_upwards_trend: View in Prometheus>
-              {{ end }}
-            color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
-      
-      - name: 'slack-high'
-        slack_configs:
-          - channel: '#josepalenzuela-prometheus-alarms'  
-            send_resolved: true
-            icon_emoji: ':warning:'
-            title: |-
-              [{{ .Status | toUpper }}]{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }} HIGH Alert - Simple Server
-            title_link: 'http://localhost:9093'
-            text: |-
-              {{ range .Alerts }}
-              {{- if .Annotations.summary }}*Summary:* {{ .Annotations.summary }}{{ end }}
-              *Alert:* `{{ .Labels.alertname }}`
-              *Severity:* `{{ .Labels.severity | toUpper }}`
-              {{- if .Annotations.description }}
-              *Description:* {{ .Annotations.description }}
-              {{- end }}
-              {{- if .Annotations.message }}
-              *Message:* {{ .Annotations.message }}
-              {{- end }}
-              *Status:* `{{ .Status }}`
-              *Started:* {{ .StartsAt.Format "2006-01-02 15:04:05" }}
-              {{- if .EndsAt }}
-              *Ended:* {{ .EndsAt.Format "2006-01-02 15:04:05" }}
-              {{- end }}
-              *Details:*
-              {{ range .Labels.SortedPairs }}  • *{{ .Name }}:* `{{ .Value }}`
-              {{ end }}
-              *Graph:* <{{ .GeneratorURL }}|:chart_with_upwards_trend: View in Prometheus>
-              {{ end }}
-            color: '{{ if eq .Status "firing" }}warning{{ else }}good{{ end }}'
-
-  templateFiles:
-    simple-server.tmpl: |-
-      {{ define "slack.simple-server.title" }}
-      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] Simple Server Alert
-      {{ end }}
-      
-      {{ define "slack.simple-server.text" }}
-      {{ range .Alerts }}
-      *Alert:* {{ .Labels.alertname }} - `{{ .Labels.severity }}`
-      {{- if .Annotations.summary }}
-      *Summary:* {{ .Annotations.summary }}
-      {{- end }}
-      {{- if .Annotations.description }}
-      *Description:* {{ .Annotations.description }}
-      {{- end }}
-      {{- if .Annotations.message }}
-      *Message:* {{ .Annotations.message }}
-      {{- end }}
-      *Cluster:* {{ .Labels.cluster }}
-      *Namespace:* {{ .Labels.namespace }}
-      *Pod:* {{ .Labels.pod }}
-      {{ end }}
-      {{ end }}
 
 prometheusOperator:
   enabled: true
 
+## Custom Prometheus Rules for Simple Server
 additionalPrometheusRulesMap:
   simple-server-rules:
     groups:
       - name: simple_server_alerts
         interval: 30s
         rules:
+          # CRITICAL ALERTS
           - alert: SimpleServerDown
             expr: up{job="simple-server"} == 0
             for: 1m
@@ -267,7 +216,7 @@ additionalPrometheusRulesMap:
 
           - alert: SimpleServerConsumingMoreThanRequest
             expr: |
-              avg(container_memory_usage_bytes{pod=~".*simple-server.*", container="simple-server"}) by (pod) 
+              avg(container_memory_usage_bytes{pod=~".*simple-server.*", container="simple-server"}) by (pod)
               > avg(kube_pod_container_resource_requests{resource="memory", pod=~".*simple-server.*", container="simple-server"}) by (pod)
             for: 2m
             labels:
@@ -276,18 +225,6 @@ additionalPrometheusRulesMap:
               summary: Simple Server consuming more memory than requested
               description: "Pod {{ $labels.pod }} is consuming more memory than requested"
               message: "Pod {{ $labels.pod }} memory usage exceeds the requested amount"
-
-          - alert: SimpleServerCPUConsumingMoreThanRequest
-            expr: |
-              avg(rate(container_cpu_usage_seconds_total{pod=~".*simple-server.*", container="simple-server"}[5m])) by (pod)
-              > avg(kube_pod_container_resource_requests{resource="cpu", pod=~".*simple-server.*", container="simple-server"}) by (pod)
-            for: 2m
-            labels:
-              severity: high
-            annotations:
-              summary: Simple Server CPU usage above requested
-              description: "Pod {{ $labels.pod }} is consuming more CPU than requested"
-              message: "Pod {{ $labels.pod }} CPU usage is {{ $value }} (above requested)"
 
           - alert: SimpleServerMemoryLimitReached
             expr: |
@@ -300,6 +237,19 @@ additionalPrometheusRulesMap:
               summary: Simple Server memory limit almost reached
               description: "Pod {{ $labels.pod }} is using more than 90% of its memory limit"
               message: "Pod {{ $labels.pod }} memory usage is at {{ $value | humanizePercentage }} of limit"
+
+          # HIGH SEVERITY ALERTS
+          - alert: SimpleServerCPUConsumingMoreThanRequest
+            expr: |
+              avg(rate(container_cpu_usage_seconds_total{pod=~".*simple-server.*", container="simple-server"}[5m])) by (pod)
+              > avg(kube_pod_container_resource_requests{resource="cpu", pod=~".*simple-server.*", container="simple-server"}) by (pod)
+            for: 2m
+            labels:
+              severity: high
+            annotations:
+              summary: Simple Server CPU usage above requested
+              description: "Pod {{ $labels.pod }} is consuming more CPU than requested"
+              message: "Pod {{ $labels.pod }} CPU usage is {{ $value }} cores (above requested)"
 
           - alert: SimpleServerHighRequestRate
             expr: rate(server_requests_total[5m]) > 100
@@ -319,22 +269,34 @@ additionalPrometheusRulesMap:
             annotations:
               summary: Simple Server not receiving requests
               description: "Simple Server hasn't received any requests in the last 10 minutes"
-              message: "No requests received - possible connectivity issue"
+              message: "No requests received in 10 minutes - possible connectivity issue"
 
           - alert: SimpleServerPodRestarting
-            expr: rate(kube_pod_container_status_restarts_total{pod=~".*simple-server.*"}[15m]) > 0
+            expr: rate(kube_pod_container_status_restarts_total{pod=~".*simple-server.*",namespace="simple-server"}[15m]) > 0
             for: 5m
             labels:
               severity: high
             annotations:
               summary: Simple Server pod is restarting
               description: "Pod {{ $labels.pod }} has restarted in the last 15 minutes"
-              message: "Pod {{ $labels.pod }} is restarting frequently"
+              message: "Pod {{ $labels.pod }} is restarting frequently - check logs"
+
+          # ADDITIONAL WORKING ALERTS
+          - alert: SimpleServerScaledUp
+            expr: count(up{job="simple-server"} == 1) > 2
+            for: 2m
+            labels:
+              severity: high
+            annotations:
+              summary: Simple Server has scaled up
+              description: "Currently {{ $value }} pods running due to high load"
+              message: "Application scaled to {{ $value }} pods - high load detected"
 
 grafana:
+  enabled: true
   plugins:
     - grafana-piechart-panel
-  
+
   sidecar:
     dashboards:
       enabled: true
@@ -343,7 +305,7 @@ grafana:
       folder: /tmp/dashboards
       provider:
         foldersFromFilesStructure: true
-  
+
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
@@ -356,24 +318,24 @@ grafana:
           editable: true
           options:
             path: /var/lib/grafana/dashboards/default
-  
+
   dashboards:
     default:
       node-exporter:
         gnetId: 11074
         revision: 9
         datasource: Prometheus
-      
+
       node-exporter-full:
         gnetId: 1860
         revision: 29
         datasource: Prometheus
-      
+
       kubernetes-cluster:
         gnetId: 7249
         revision: 1
         datasource: Prometheus
-      
+
       kubernetes-pods:
         gnetId: 6417
         revision: 1
