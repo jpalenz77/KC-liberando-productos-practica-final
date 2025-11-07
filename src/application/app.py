@@ -56,3 +56,9 @@ class SimpleServer:
         # Increment counter used for register the total number of calls in the bye endpoint
         BYE_ENDPOINT_REQUESTS.inc()
         return {"msg": "Bye Bye"}
+
+
+if __name__ == "__main__":
+    import asyncio
+    server = SimpleServer()
+    asyncio.run(server.run_server())
