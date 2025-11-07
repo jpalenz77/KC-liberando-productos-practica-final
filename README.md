@@ -18,6 +18,7 @@
 8. [Dashboard de Grafana](#-dashboard-de-grafana)
 9. [Guía de Despliegue](#-guía-de-despliegue)
 10. [Troubleshooting](#-troubleshooting)
+11. [Recursos Adicionales](#-recursos-adicionales)
 
 ---
 
@@ -197,8 +198,8 @@ helm/simple-server/
     ├── deployment.yaml     # Deployment con la app
     ├── service.yaml        # Service (ClusterIP)
     ├── serviceaccount.yaml # ServiceAccount
-    ├── hpa.yaml           # HorizontalPodAutoscaler
-    ├── ingress.yaml       # Ingress (opcional)
+    ├── hpa.yaml            # HorizontalPodAutoscaler
+    ├── ingress.yaml        # Ingress (opcional)
     ├── service_monitor.yaml # ServiceMonitor (Prometheus)
     └── dockerhub_access.yaml # Secret para GHCR
 ```
@@ -219,11 +220,7 @@ helm repo add prometheus-community https://prometheus-community.github.io/helm-c
 helm repo update
 
 # Instalar la aplicación
-helm install simple-server ./helm/simple-server \
-  --namespace simple-server \
-  --create-namespace \
-  --set image.repository=ghcr.io/jpalenz77/kc-liberando-productos-practica-final \
-  --set image.tag=latest
+helm install simple-server ./helm/simple-server   --namespace simple-server   --create-namespace   --set image.repository=ghcr.io/jpalenz77/kc-liberando-productos-practica-final   --set image.tag=latest
 ```
 
 ### Verificar el despliegue
@@ -266,9 +263,7 @@ curl http://localhost:8081/metrics
 kubectl create namespace monitoring
 
 # Instalar Prometheus Operator + Grafana + Alertmanager
-helm install prometheus prometheus-community/kube-prometheus-stack \
-  --namespace monitoring \
-  --values monitoring/kube-prometheus-stack/values.yaml
+helm install prometheus prometheus-community/kube-prometheus-stack   --namespace monitoring   --values monitoring/kube-prometheus-stack/values.yaml
 ```
 
 ### Verificar instalación
@@ -346,26 +341,19 @@ El webhook de Slack contiene información sensible y **NUNCA** debe ser commitea
 3. **Instalar Prometheus con el webhook** (usando --set):
 ```bash
 # Opción 1: Mediante --set en la línea de comandos (RECOMENDADO)
-helm install prometheus prometheus-community/kube-prometheus-stack \
-  --namespace monitoring \
-  --values monitoring/kube-prometheus-stack/values.yaml \
-  --set alertmanager.config.global.slack_api_url='https://hooks.slack.com/services/YOUR/WEBHOOK/HERE'
+helm install prometheus prometheus-community/kube-prometheus-stack   --namespace monitoring   --values monitoring/kube-prometheus-stack/values.yaml   --set alertmanager.config.global.slack_api_url='https://hooks.slack.com/services/YOUR/WEBHOOK/HERE'
 ```
 
 **Opción 2: Crear archivo secrets.yaml local (NO hacer commit)**
 ```bash
 # Copiar el ejemplo
-cp monitoring/kube-prometheus-stack/secrets.example.yaml \
-   monitoring/kube-prometheus-stack/secrets.yaml
+cp monitoring/kube-prometheus-stack/secrets.example.yaml    monitoring/kube-prometheus-stack/secrets.yaml
 
 # Editar con tu webhook real
 nano monitoring/kube-prometheus-stack/secrets.yaml
 
 # Instalar con ambos archivos
-helm install prometheus prometheus-community/kube-prometheus-stack \
-  --namespace monitoring \
-  --values monitoring/kube-prometheus-stack/values.yaml \
-  --values monitoring/kube-prometheus-stack/secrets.yaml
+helm install prometheus prometheus-community/kube-prometheus-stack   --namespace monitoring   --values monitoring/kube-prometheus-stack/values.yaml   --values monitoring/kube-prometheus-stack/secrets.yaml
 ```
 
 **Opción 3: Variable de entorno**
@@ -374,104 +362,100 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
 export SLACK_WEBHOOK='https://hooks.slack.com/services/YOUR/WEBHOOK/HERE'
 
 # Usar en helm
-helm install prometheus prometheus-community/kube-prometheus-stack \
-  --namespace monitoring \
-  --values monitoring/kube-prometheus-stack/values.yaml \
-  --set alertmanager.config.global.slack_api_url="$SLACK_WEBHOOK"
+helm install prometheus prometheus-community/kube-prometheus-stack   --namespace monitoring   --values monitoring/kube-prometheus-stack/values.yaml   --set alertmanager.config.global.slack_api_url="$SLACK_WEBHOOK"
 ```
 
 ⚠️ **Recuerda:** El webhook es un secreto. Nunca lo compartas públicamente.
-```
-# **⚡ Simple Server: Referencia Operacional y Pruebas de Estrés**
+
+---
+
+## ⚡ Simple Server: Referencia Operacional y Pruebas de Estrés
 
 Este documento sirve como referencia para el monitoreo (Alerts) y como guía para realizar pruebas de rendimiento y escalado (Stress Test) sobre el despliegue de Kubernetes simple-server.
 
-## **🚨 Referencia de Alertas Operacionales**
+### 🚨 Referencia de Alertas Operacionales
 
 Lista detallada de las reglas de alerta configuradas en nuestro sistema de monitoreo, categorizadas por severidad y tiempo de activación.
 
 | Categoría | Alerta | Condición | Duración | Impacto |
 | :---- | :---- | :---- | :---- | :---- |
 
-### **Nivel 1: CRÍTICO (CRITICAL) 🔴**
+#### Nivel 1: CRÍTICO (CRITICAL) 🔴
 
 | Alerta | Condición | Retardo (Duración) | Descripción de Impacto |
 | :---- | :---- | :---- | :---- |
 | SimpleServerDown | Pod caído o no disponible. | **1 minuto** | Interrupción del servicio. Requiere acción inmediata. |
-| SimpleServerMemoryLimitReached | Uso de memoria \> 90% del límite. | **1 minuto** | Riesgo inminente de OOMKill (eliminación por falta de memoria). |
-| SimpleServerConsumingMoreThanRequest | Uso de memoria real \> límite de request. | 2 minutos | Saturación de recursos del nodo. |
-| SimpleServerCPUThrottlingHigh | Limitación de CPU (Throttling) \> 25%. | 5 minutos | Degradación grave del rendimiento. |
+| SimpleServerMemoryLimitReached | Uso de memoria > 90% del límite. | **1 minuto** | Riesgo inminente de OOMKill (eliminación por falta de memoria). |
+| SimpleServerConsumingMoreThanRequest | Uso de memoria real > límite de request. | 2 minutos | Saturación de recursos del nodo. |
+| SimpleServerCPUThrottlingHigh | Limitación de CPU (Throttling) > 25%. | 5 minutos | Degradación grave del rendimiento. |
 
-### **Nivel 2: ALTO (HIGH) 🟠**
+#### Nivel 2: ALTO (HIGH) 🟠
 
 | Alerta | Condición | Retardo (Duración) | Descripción de Impacto |
 | :---- | :---- | :---- | :---- |
 | SimpleServerPodRestarting | El Pod en ciclo de reinicios. | 5 minutos | Inestabilidad del servicio. |
-| SimpleServerCPUConsumingMoreThanRequest | Uso de CPU real \> límite de request. | 2 minutos | Consumo ineficiente, potencial latencia. |
-| SimpleServerHighRequestRate | Tasa de peticiones \> 100 req/s. | 5 minutos | Alerta de tráfico elevado. |
+| SimpleServerCPUConsumingMoreThanRequest | Uso de CPU real > límite de request. | 2 minutos | Consumo ineficiente, potencial latencia. |
+| SimpleServerHighRequestRate | Tasa de peticiones > 100 req/s. | 5 minutos | Alerta de tráfico elevado. |
 | SimpleServerNoRequests | No se han recibido peticiones. | 10 minutos | Indicio de problema en el balanceador. |
 
-## **💥 Guía de Stress Test con NodeWrecker**
+### 💥 Guía de Stress Test con NodeWrecker
 
 Este procedimiento utiliza la herramienta **NodeWrecker** para generar una carga artificial intensa (CPU y Memoria) dentro de un pod. El objetivo es validar el **Horizontal Pod Autoscaler (HPA)**.
 
-### **📝 Requisitos**
+#### 📝 Requisitos
+- Acceso kubectl configurado al clúster.
+- El Pod debe tener permisos para ejecutar apk y go build.
 
-* Acceso kubectl configurado al clúster.  
-* El Pod debe tener permisos para ejecutar apk y go build.
-
-### **Paso 1: Identificar el Pod Target**
-
+#### Paso 1: Identificar el Pod Target
 Obtén el nombre del pod de simple-server.
+```bash
+kubectl get pods -n simple-server
+# Ejemplo: simple-server-b87696dcc-gzzzz
+```
 
-kubectl get pods \-n simple-server  
-\# Ejemplo: simple-server-b87696dcc-gzzzz
-
-### **Paso 2: Acceder al Contenedor 🚪**
-
+#### Paso 2: Acceder al Contenedor 🚪
 Abre una sesión interactiva.
+```bash
+# REEMPLAZA "simple-server-xxxxxxxx-yyyyy" con el nombre del pod
+kubectl -n simple-server exec --stdin --tty simple-server-xxxxxxxx-yyyyy -c simple-server -- /bin/sh
+```
 
-\# REEMPLAZA "simple-server-xxxxxxxx-yyyyy" con el nombre del pod  
-kubectl \-n simple-server exec \--stdin \--tty simple-server-xxxxxxxx-yyyyy \-c simple-server \-- /bin/sh
-
-### **Paso 3: Instalar Dependencias 🛠️**
-
+#### Paso 3: Instalar Dependencias 🛠️
 Dentro del pod, instala las herramientas necesarias (git y go).
-
-apk update  
+```bash
+apk update
 apk add git go
+```
 
-### **Paso 4: Clonar y Compilar NodeWrecker**
-
+#### Paso 4: Clonar y Compilar NodeWrecker
 Descarga y genera el binario ejecutable (extress).
+```bash
+git clone https://github.com/jaeg/NodeWrecker.git
+cd NodeWrecker
+go build -o extress main.go
+```
 
-git clone \[https://github.com/jaeg/NodeWrecker.git\](https://github.com/jaeg/NodeWrecker.git)  
-cd NodeWrecker  
-go build \-o extress main.go
-
-### **Paso 5: Ejecutar la Prueba de Estrés 🔥**
-
+#### Paso 5: Ejecutar la Prueba de Estrés 🔥
 Inicia la carga intensiva sobre el Pod.
+```bash
+./extress -abuse-memory -escalate -max-duration 10000000
+```
+**Consejo:** Detén la prueba manualmente en cualquier momento con `Ctrl + C`.
 
-./extress \-abuse-memory \-escalate \-max-duration 10000000
-
-**Consejo:** Detén la prueba manualmente en cualquier momento con Ctrl \+ C.
-
-### **Paso 6: Monitorizar el HPA 📈**
-
+#### Paso 6: Monitorizar el HPA 📈
 **En una terminal NUEVA (fuera del pod)**, observa el comportamiento del autoscaler.
+```bash
+kubectl -n simple-server get hpa -w
+```
 
-kubectl \-n simple-server get hpa \-w
-
-### **Paso 7: Observar el Escalado 🚀**
-
+#### Paso 7: Observar el Escalado 🚀
 **En otra terminal NUEVA**, sigue la creación de réplicas.
+```bash
+kubectl -n simple-server get pods -w
+```
 
-kubectl \-n simple-server get pods \-w
-
-### **Paso 8: Finalizar y Desescalar 🧹**
-
-Detén la ejecución de extress (Ctrl \+ C) en la sesión del pod. El HPA iniciará el *downscaling*.
+#### Paso 8: Finalizar y Desescalar 🧹
+Detén la ejecución de extress (`Ctrl + C`) en la sesión del pod. El HPA iniciará el *downscaling*.
 
 ### Acceder a Alertmanager
 ```bash
@@ -495,10 +479,10 @@ kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
 open http://localhost:3000
 
 # Credenciales:
-User: admin
-Contraseña: kubectl get secret prometheus-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+# User: admin
+# Contraseña:
+kubectl get secret prometheus-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
 # el resultado de ese comando es la contraseña del admin
-
 ```
 
 ### Importar Dashboard
@@ -590,9 +574,7 @@ helm repo update
 kubectl create namespace monitoring
 
 # Instalar (IMPORTANTE: configurar Slack webhook antes)
-helm install prometheus prometheus-community/kube-prometheus-stack \
-  --namespace monitoring \
-  --values monitoring/kube-prometheus-stack/values.yaml
+helm install prometheus prometheus-community/kube-prometheus-stack   --namespace monitoring   --values monitoring/kube-prometheus-stack/values.yaml
 
 # Esperar a que todos los pods estén ready
 kubectl get pods -n monitoring -w
@@ -604,11 +586,7 @@ kubectl get pods -n monitoring -w
 kubectl create namespace simple-server
 
 # Instalar con Helm
-helm install simple-server ./helm/simple-server \
-  --namespace simple-server \
-  --set image.repository=ghcr.io/jpalenz77/kc-liberando-productos-practica-final \
-  --set image.tag=latest \
-  --set metrics.enabled=true
+helm install simple-server ./helm/simple-server   --namespace simple-server   --set image.repository=ghcr.io/jpalenz77/kc-liberando-productos-practica-final   --set image.tag=latest   --set metrics.enabled=true
 
 # Verificar
 kubectl get pods -n simple-server
@@ -735,9 +713,7 @@ kubectl get secret -n monitoring alertmanager-prometheus-kube-prometheus-alertma
 kubectl logs -n monitoring alertmanager-prometheus-kube-prometheus-alertmanager-0
 
 # Probar webhook manualmente
-curl -X POST -H 'Content-type: application/json' \
-  --data '{"text":"Test from curl"}' \
-  YOUR_SLACK_WEBHOOK_URL
+curl -X POST -H 'Content-type: application/json'   --data '{"text":"Test from curl"}'   YOUR_SLACK_WEBHOOK_URL
 ```
 
 ---
@@ -749,5 +725,3 @@ curl -X POST -H 'Content-type: application/json' \
 - [Grafana Documentation](https://grafana.com/docs/)
 - [Helm Documentation](https://helm.sh/docs/)
 - [Kubernetes Documentation](https://kubernetes.io/docs/)
-
----
