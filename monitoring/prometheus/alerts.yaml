@@ -1,0 +1,63 @@
+groups:
+  - name: simple_server_alerts
+    interval: 30s
+    rules:
+      # Alert when service is down
+      - alert: ServiceDown
+        expr: up{job="simple-server"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Simple Server is down"
+          description: "Simple Server instance {{ $labels.instance }} has been down for more than 1 minute."
+
+      # Alert for high request rate
+      - alert: HighRequestRate
+        expr: rate(server_requests_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request rate detected"
+          description: "Simple Server is receiving more than 100 requests per second (current: {{ $value }})."
+
+      # Alert for main endpoint usage
+      - alert: MainEndpointHighUsage
+        expr: rate(main_requests_total[5m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Main endpoint receiving high traffic"
+          description: "Main endpoint (/) is receiving more than 50 requests per second (current: {{ $value }})."
+
+      # Alert for bye endpoint usage
+      - alert: ByeEndpointHighUsage
+        expr: rate(bye_requests_total[5m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Bye endpoint receiving high traffic"
+          description: "Bye endpoint (/bye) is receiving more than 50 requests per second (current: {{ $value }})."
+
+      # Alert for healthcheck failures
+      - alert: HealthcheckHighRate
+        expr: rate(healthcheck_requests_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "High healthcheck rate"
+          description: "Healthcheck endpoint is being called more than 10 times per second (current: {{ $value }})."
+
+      # Alert when no requests for a while
+      - alert: NoRequestsReceived
+        expr: rate(server_requests_total[10m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No requests received"
+          description: "Simple Server hasn't received any requests in the last 10 minutes."
