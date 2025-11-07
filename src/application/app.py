@@ -5,7 +5,8 @@ Module define fastapi server configuration
 from fastapi import FastAPI
 from hypercorn.asyncio import serve
 from hypercorn.config import Config as HyperCornConfig
-from prometheus_client import Counter
+from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+from fastapi.responses import Response
 
 app = FastAPI()
 
@@ -56,6 +57,11 @@ class SimpleServer:
         # Increment counter used for register the total number of calls in the bye endpoint
         BYE_ENDPOINT_REQUESTS.inc()
         return {"msg": "Bye Bye"}
+
+    @app.get("/metrics")
+    async def metrics():
+        """Expose Prometheus metrics"""
+        return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 if __name__ == "__main__":
