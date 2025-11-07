@@ -701,15 +701,3 @@ curl -X POST -H 'Content-type: application/json' \
 - [Kubernetes Documentation](https://kubernetes.io/docs/)
 
 ---
-
-## 👤 Autor
-
-**Juan Pablo Alenza**
-- GitHub: [@jpalenz77](https://github.com/jpalenz77)
-- Proyecto: KC Liberando Productos - Práctica Final
-
----
-
-## 📝 Licencia
-
-Este proyecto es parte de la práctica final del curso "Liberando Productos" de KeepCoding.
