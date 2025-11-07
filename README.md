@@ -327,24 +327,60 @@ kube_pod_container_status_restarts_total{pod=~".*simple-server.*"}
 
 ### Configuración de Slack
 
+⚠️ **IMPORTANTE: Seguridad del Webhook**
+
+El webhook de Slack contiene información sensible y **NUNCA** debe ser commiteado al repositorio.
+
+**Pasos para configurar:**
+
 1. **Crear canal en Slack**: `#jpalenz-prometheus-alarms`
+
 2. **Crear Incoming Webhook**:
    - Ve a https://api.slack.com/apps
    - Create New App → From scratch
    - Nombre: "Prometheus Alertmanager"
    - Incoming Webhooks → Activate → Add New Webhook
-   - Copia la URL del webhook
+   - Selecciona tu canal
+   - **Copia la URL del webhook**
 
-3. **Configurar en values.yaml**:
-```yaml
-   alertmanager:
-     config:
-       global:
-         slack_api_url: 'https://hooks.slack.com/services/TU-WEBHOOK-AQUI'
-       receivers:
-         - name: 'slack-critical'
-           slack_configs:
-             - channel: '#jpalenz-prometheus-alarms'
+3. **Instalar Prometheus con el webhook** (usando --set):
+```bash
+# Opción 1: Mediante --set en la línea de comandos (RECOMENDADO)
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --values monitoring/kube-prometheus-stack/values.yaml \
+  --set alertmanager.config.global.slack_api_url='https://hooks.slack.com/services/YOUR/WEBHOOK/HERE'
+```
+
+**Opción 2: Crear archivo secrets.yaml local (NO hacer commit)**
+```bash
+# Copiar el ejemplo
+cp monitoring/kube-prometheus-stack/secrets.example.yaml \
+   monitoring/kube-prometheus-stack/secrets.yaml
+
+# Editar con tu webhook real
+nano monitoring/kube-prometheus-stack/secrets.yaml
+
+# Instalar con ambos archivos
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --values monitoring/kube-prometheus-stack/values.yaml \
+  --values monitoring/kube-prometheus-stack/secrets.yaml
+```
+
+**Opción 3: Variable de entorno**
+```bash
+# Exportar como variable de entorno
+export SLACK_WEBHOOK='https://hooks.slack.com/services/YOUR/WEBHOOK/HERE'
+
+# Usar en helm
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --values monitoring/kube-prometheus-stack/values.yaml \
+  --set alertmanager.config.global.slack_api_url="$SLACK_WEBHOOK"
+```
+
+⚠️ **Recuerda:** El webhook es un secreto. Nunca lo compartas públicamente.
 ```
 
 ### Alertas Configuradas

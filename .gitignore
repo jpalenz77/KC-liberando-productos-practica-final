@@ -1,11 +1,14 @@
+# Secrets
+secrets.yaml
+*-secrets.yaml
+slack-webhook.txt
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-
-# Virtual Environment
 venv/
 env/
 ENV/
@@ -24,7 +27,6 @@ coverage.xml
 .idea/
 *.swp
 *.swo
-*.code-workspace
 
 # OS
 .DS_Store
@@ -34,9 +36,3 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
-
-# Docker
-.dockerignore
-
-# Coverage
-.coverage.*
