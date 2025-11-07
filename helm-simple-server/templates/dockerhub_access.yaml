@@ -1,0 +1,11 @@
+{{- if ((.Values.imageCredentials).password) -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dockerhub-access
+  labels:
+    {{- include "simple-server.labels" . | nindent 4 }}
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: {{ template "imagePullSecret" . }}
+{{- end }}
