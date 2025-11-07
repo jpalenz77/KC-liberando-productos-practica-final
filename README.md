@@ -382,93 +382,96 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
 
 ⚠️ **Recuerda:** El webhook es un secreto. Nunca lo compartas públicamente.
 ```
+# **⚡ Simple Server: Referencia Operacional y Pruebas de Estrés**
 
-### Alertas Configuradas
+Este documento sirve como referencia para el monitoreo (Alerts) y como guía para realizar pruebas de rendimiento y escalado (Stress Test) sobre el despliegue de Kubernetes simple-server.
 
-#### Alertas CRITICAL (🔴):
+## **🚨 Referencia de Alertas Operacionales**
 
-| Alerta | Condición | Duración |
-|--------|-----------|----------|
-| `SimpleServerDown` | Pod caído | 1 min |
-| `SimpleServerCPUThrottlingHigh` | CPU throttling > 25% | 5 min |
-| `SimpleServerConsumingMoreThanRequest` | Memoria > request | 2 min |
-| `SimpleServerMemoryLimitReached` | Memoria > 90% del límite | 1 min |
+Lista detallada de las reglas de alerta configuradas en nuestro sistema de monitoreo, categorizadas por severidad y tiempo de activación.
 
-#### Alertas HIGH (🟠):
+| Categoría | Alerta | Condición | Duración | Impacto |
+| :---- | :---- | :---- | :---- | :---- |
 
-| Alerta | Condición | Duración |
-|--------|-----------|----------|
-| `SimpleServerCPUConsumingMoreThanRequest` | CPU > request | 2 min |
-| `SimpleServerHighRequestRate` | > 100 req/s | 5 min |
-| `SimpleServerNoRequests` | Sin requests | 10 min |
-| `SimpleServerPodRestarting` | Pod reiniciando | 5 min |
+### **Nivel 1: CRÍTICO (CRITICAL) 🔴**
 
-# Stress Test con NodeWrecker en el Pod de `simple-server`
+| Alerta | Condición | Retardo (Duración) | Descripción de Impacto |
+| :---- | :---- | :---- | :---- |
+| SimpleServerDown | Pod caído o no disponible. | **1 minuto** | Interrupción del servicio. Requiere acción inmediata. |
+| SimpleServerMemoryLimitReached | Uso de memoria \> 90% del límite. | **1 minuto** | Riesgo inminente de OOMKill (eliminación por falta de memoria). |
+| SimpleServerConsumingMoreThanRequest | Uso de memoria real \> límite de request. | 2 minutos | Saturación de recursos del nodo. |
+| SimpleServerCPUThrottlingHigh | Limitación de CPU (Throttling) \> 25%. | 5 minutos | Degradación grave del rendimiento. |
 
-Este procedimiento permite realizar una **prueba de estrés (stress test)** sobre el despliegue `simple-server` en Kubernetes utilizando la herramienta **NodeWrecker**.  
-Durante la prueba, podrás observar cómo el **Horizontal Pod Autoscaler (HPA)** reacciona ante la carga, creando nuevos pods según la configuración de escalado.
+### **Nivel 2: ALTO (HIGH) 🟠**
 
----
+| Alerta | Condición | Retardo (Duración) | Descripción de Impacto |
+| :---- | :---- | :---- | :---- |
+| SimpleServerPodRestarting | El Pod en ciclo de reinicios. | 5 minutos | Inestabilidad del servicio. |
+| SimpleServerCPUConsumingMoreThanRequest | Uso de CPU real \> límite de request. | 2 minutos | Consumo ineficiente, potencial latencia. |
+| SimpleServerHighRequestRate | Tasa de peticiones \> 100 req/s. | 5 minutos | Alerta de tráfico elevado. |
+| SimpleServerNoRequests | No se han recibido peticiones. | 10 minutos | Indicio de problema en el balanceador. |
 
-## 🧩 1. Obtener el nombre del Pod
+## **💥 Guía de Stress Test con NodeWrecker**
 
-Primero, identificamos el pod desplegado en el namespace `simple-server`:
+Este procedimiento utiliza la herramienta **NodeWrecker** para generar una carga artificial intensa (CPU y Memoria) dentro de un pod. El objetivo es validar el **Horizontal Pod Autoscaler (HPA)**.
 
-```bash
-kubectl get pods -n simple-server --show-labels
-Ejemplo de salida:
+### **📝 Requisitos**
 
-pgsql
-Copy code
-NAME                            READY   STATUS    RESTARTS   AGE   LABELS
-simple-server-b87696dcc-gzzzz   1/1     Running   0          29m   app.kubernetes.io/instance=simple-server,app.kubernetes.io/name=simple-server,pod-template-hash=b87696dcc
-🚪 2. Entrar en el Pod
-Con el nombre del pod (por ejemplo simple-server-b87696dcc-gzzzz), abrimos una sesión interactiva dentro del contenedor principal:
+* Acceso kubectl configurado al clúster.  
+* El Pod debe tener permisos para ejecutar apk y go build.
 
-bash
-Copy code
-kubectl -n simple-server exec --stdin --tty simple-server-b87696dcc-gzzzz -c simple-server -- /bin/sh
-🧱 3. Instalar dependencias necesarias
-Dentro del pod, actualizamos los repositorios e instalamos git y Go:
+### **Paso 1: Identificar el Pod Target**
 
-bash
-Copy code
-apk update && apk add git go
-📥 4. Clonar y compilar NodeWrecker
-Descargamos el repositorio y compilamos el binario del proyecto:
+Obtén el nombre del pod de simple-server.
 
-bash
-Copy code
-git clone https://github.com/jaeg/NodeWrecker.git
-cd NodeWrecker
-go build -o extress main.go
-⚡ 5. Ejecutar la prueba de estrés
-Ejecutamos el binario generado para iniciar la carga dentro del pod:
+kubectl get pods \-n simple-server  
+\# Ejemplo: simple-server-b87696dcc-gzzzz
 
-bash
-Copy code
-./extress -abuse-memory -escalate -max-duration 10000000
-Esto simula un uso intensivo de recursos (memoria y CPU) durante un periodo prolongado.
+### **Paso 2: Acceder al Contenedor 🚪**
 
-📊 6. Monitorizar el comportamiento del HPA
-En una nueva pestaña del terminal, observa cómo responde el HPA de simple-server:
+Abre una sesión interactiva.
 
-bash
-Copy code
-kubectl -n simple-server get hpa -w
-Verás cómo los targets de CPU/memoria aumentan, provocando que el HPA inicie el escalado automático.
+\# REEMPLAZA "simple-server-xxxxxxxx-yyyyy" con el nombre del pod  
+kubectl \-n simple-server exec \--stdin \--tty simple-server-xxxxxxxx-yyyyy \-c simple-server \-- /bin/sh
 
-🧩 7. Ver creación de nuevos pods
-En otra pestaña, monitoriza la creación de pods mientras el HPA escala la aplicación:
+### **Paso 3: Instalar Dependencias 🛠️**
 
-bash
-Copy code
-kubectl -n simple-server get pods -w
-Podrás ver cómo se crean (y luego eliminan) réplicas del simple-server a medida que el autoscaler ajusta la carga.
+Dentro del pod, instala las herramientas necesarias (git y go).
 
-🧹 8. Finalizar la prueba
-Cuando hayas terminado, puedes detener la ejecución del binario (Ctrl + C) y observar cómo el HPA reduce nuevamente el número de pods cuando el consumo baja.
-```
+apk update  
+apk add git go
+
+### **Paso 4: Clonar y Compilar NodeWrecker**
+
+Descarga y genera el binario ejecutable (extress).
+
+git clone \[https://github.com/jaeg/NodeWrecker.git\](https://github.com/jaeg/NodeWrecker.git)  
+cd NodeWrecker  
+go build \-o extress main.go
+
+### **Paso 5: Ejecutar la Prueba de Estrés 🔥**
+
+Inicia la carga intensiva sobre el Pod.
+
+./extress \-abuse-memory \-escalate \-max-duration 10000000
+
+**Consejo:** Detén la prueba manualmente en cualquier momento con Ctrl \+ C.
+
+### **Paso 6: Monitorizar el HPA 📈**
+
+**En una terminal NUEVA (fuera del pod)**, observa el comportamiento del autoscaler.
+
+kubectl \-n simple-server get hpa \-w
+
+### **Paso 7: Observar el Escalado 🚀**
+
+**En otra terminal NUEVA**, sigue la creación de réplicas.
+
+kubectl \-n simple-server get pods \-w
+
+### **Paso 8: Finalizar y Desescalar 🧹**
+
+Detén la ejecución de extress (Ctrl \+ C) en la sesión del pod. El HPA iniciará el *downscaling*.
 
 ### Acceder a Alertmanager
 ```bash
