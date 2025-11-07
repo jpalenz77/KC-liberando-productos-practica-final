@@ -574,7 +574,10 @@ helm repo update
 kubectl create namespace monitoring
 
 # Instalar (IMPORTANTE: configurar Slack webhook antes)
-helm install prometheus prometheus-community/kube-prometheus-stack   --namespace monitoring   --values monitoring/kube-prometheus-stack/values.yaml
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring --create-namespace \
+  --values monitoring/kube-prometheus-stack/values.yaml \
+  --set alertmanager.config.global.slack_api_url='https://hooks.slack.com/services/XXX/YYY/ZZZ'
 
 # Esperar a que todos los pods estén ready
 kubectl get pods -n monitoring -w

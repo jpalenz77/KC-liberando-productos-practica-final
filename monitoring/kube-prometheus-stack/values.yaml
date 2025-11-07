@@ -92,7 +92,7 @@ alertmanager:
   config:
     global:
       resolve_timeout: 5m
-    #  slack_api_url: '' 
+      slack_api_url: '' 
     
     templates:
       - '/etc/alertmanager/config/*.tmpl'
@@ -102,7 +102,7 @@ alertmanager:
       group_wait: 10s
       group_interval: 10s
       repeat_interval: 12h
-      receiver: 'default'
+      receiver: 'slack-default'
       routes:
         - match:
             severity: critical
@@ -131,10 +131,8 @@ alertmanager:
           alertname: 'Watchdog'
         equal: ['prometheus']
     
-    receivers:
-      - name: 'null'
-      
-      - name: 'default'
+    receivers:      
+      - name: 'slack-default'
         slack_configs:
           - channel: '#josepalenzuela-prometheus-alarms'  
             send_resolved: true
