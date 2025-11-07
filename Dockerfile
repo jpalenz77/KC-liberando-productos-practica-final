@@ -15,7 +15,7 @@ RUN apk --no-cache add curl build-base && \
 COPY src/ .
 
 # Expose ports
-EXPOSE 8081 8000
+EXPOSE 8081
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app

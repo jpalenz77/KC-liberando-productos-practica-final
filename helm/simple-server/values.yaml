@@ -52,7 +52,7 @@ metrics:
   # -- Service configuration used for metrics
   svc:
     # -- Service port number used for metrics
-    port: 8000
+    port: 8081
     # -- Service port name used for metrics
     name: metrics
 

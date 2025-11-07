@@ -7,7 +7,8 @@ metadata:
     {{- include "simple-server.labels" . | nindent 4 }}
 spec:
   endpoints:
-  - port: {{ .Values.metrics.svc.name }}
+  - port: http
+    path: /metrics
   selector:
     matchLabels:
       {{- include "simple-server.selectorLabels" . | nindent 6 }}
