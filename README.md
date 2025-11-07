@@ -403,26 +403,71 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
 | `SimpleServerNoRequests` | Sin requests | 10 min |
 | `SimpleServerPodRestarting` | Pod reiniciando | 5 min |
 
-### Probar las alertas
+# Stress Test con NodeWrecker en el Pod de `simple-server`
 
-#### Opción 1: Escalar a 0 (SimpleServerDown)
+Este procedimiento permite realizar una **prueba de estrés (stress test)** sobre el despliegue `simple-server` en Kubernetes utilizando la herramienta **NodeWrecker**.  
+Durante la prueba, podrás observar cómo el **Horizontal Pod Autoscaler (HPA)** reacciona ante la carga, creando nuevos pods según la configuración de escalado.
+
+---
+
+## 🧩 1. Obtener el nombre del Pod
+
+Primero, identificamos el pod desplegado en el namespace `simple-server`:
+
 ```bash
-# Escalar a 0 réplicas
-kubectl scale deployment simple-server -n simple-server --replicas=0
+kubectl get pods -n simple-server --show-labels
+Ejemplo de salida:
 
-# Esperar ~2 minutos → Recibirás alerta en Slack
+pgsql
+Copy code
+NAME                            READY   STATUS    RESTARTS   AGE   LABELS
+simple-server-b87696dcc-gzzzz   1/1     Running   0          29m   app.kubernetes.io/instance=simple-server,app.kubernetes.io/name=simple-server,pod-template-hash=b87696dcc
+🚪 2. Entrar en el Pod
+Con el nombre del pod (por ejemplo simple-server-b87696dcc-gzzzz), abrimos una sesión interactiva dentro del contenedor principal:
 
-# Restaurar
-kubectl scale deployment simple-server -n simple-server --replicas=2
-```
+bash
+Copy code
+kubectl -n simple-server exec --stdin --tty simple-server-b87696dcc-gzzzz -c simple-server -- /bin/sh
+🧱 3. Instalar dependencias necesarias
+Dentro del pod, actualizamos los repositorios e instalamos git y Go:
 
-#### Opción 2: Generar carga CPU
-```bash
-# Instalar stress
-kubectl run stress-test -n simple-server \
-  --image=polinux/stress \
-  --rm -it --restart=Never \
-  -- stress --cpu 2 --timeout 300s
+bash
+Copy code
+apk update && apk add git go
+📥 4. Clonar y compilar NodeWrecker
+Descargamos el repositorio y compilamos el binario del proyecto:
+
+bash
+Copy code
+git clone https://github.com/jaeg/NodeWrecker.git
+cd NodeWrecker
+go build -o extress main.go
+⚡ 5. Ejecutar la prueba de estrés
+Ejecutamos el binario generado para iniciar la carga dentro del pod:
+
+bash
+Copy code
+./extress -abuse-memory -escalate -max-duration 10000000
+Esto simula un uso intensivo de recursos (memoria y CPU) durante un periodo prolongado.
+
+📊 6. Monitorizar el comportamiento del HPA
+En una nueva pestaña del terminal, observa cómo responde el HPA de simple-server:
+
+bash
+Copy code
+kubectl -n simple-server get hpa -w
+Verás cómo los targets de CPU/memoria aumentan, provocando que el HPA inicie el escalado automático.
+
+🧩 7. Ver creación de nuevos pods
+En otra pestaña, monitoriza la creación de pods mientras el HPA escala la aplicación:
+
+bash
+Copy code
+kubectl -n simple-server get pods -w
+Podrás ver cómo se crean (y luego eliminan) réplicas del simple-server a medida que el autoscaler ajusta la carga.
+
+🧹 8. Finalizar la prueba
+Cuando hayas terminado, puedes detener la ejecución del binario (Ctrl + C) y observar cómo el HPA reduce nuevamente el número de pods cuando el consumo baja.
 ```
 
 ### Acceder a Alertmanager
