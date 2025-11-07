@@ -1,9 +1,11 @@
 [run]
 source = src
+relative_files = true
 omit = 
     */tests/*
     */venv/*
     */__pycache__/*
+    */site-packages/*
 
 [report]
 exclude_lines =
@@ -13,3 +15,8 @@ exclude_lines =
     raise NotImplementedError
     if __name__ == .__main__.:
     if TYPE_CHECKING:
+
+[paths]
+source =
+    src/
+    /home/runner/work/*/src/
