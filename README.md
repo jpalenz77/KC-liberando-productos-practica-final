@@ -447,8 +447,10 @@ kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
 open http://localhost:3000
 
 # Credenciales:
-# User: admin
-# Password: prom-operator
+User: admin
+Contraseña: kubectl get secret prometheus-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+# el resultado de ese comando es la contraseña del admin
+
 ```
 
 ### Importar Dashboard
