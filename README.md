@@ -333,7 +333,7 @@ El webhook de Slack contiene información sensible y **NUNCA** debe ser commitea
 
 **Pasos para configurar:**
 
-1. **Crear canal en Slack**: `#jpalenz-prometheus-alarms`
+1. **Crear canal en Slack**: `#josepalenzuela-prometheus-alarms`
 
 2. **Crear Incoming Webhook**:
    - Ve a https://api.slack.com/apps
