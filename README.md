@@ -550,7 +550,7 @@ Obtener la contraseña de administrador:
 kubectl get secret prometheus-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
 ```
 
-> 💡 **Importante**: Guarda esta contraseña en un lugar seguro, la necesitarás para acceder al dashboard
+> 💡 **Importante**: Guarda la contraseña de Grafana **y el webhook de Slack** en un lugar seguro, los necesitarás para acceder al dashboard y **configurar alertas en Slack**. Nunca compartas el webhook públicamente.
 
 ### Importar Dashboard
 
@@ -618,7 +618,7 @@ Si haces cambios en el dashboard:
   ```bash
   kubectl get secret prometheus-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
   ```
-   > 💡 **Importante**: Guarda la contraseña de Grafana y el webhook de Slack en un lugar seguro, los necesitarás para acceder al dashboard y configurar alertas.
+   > 💡 **Importante**: Guarda la contraseña de Grafana **y el webhook de Slack** en un lugar seguro, los necesitarás para acceder al dashboard y **configurar alertas en Slack**. Nunca compartas el webhook públicamente.
 
 #### URLs de Acceso (después del despliegue)
 - **Aplicación**: http://localhost:8081
@@ -633,6 +633,7 @@ Si haces cambios en el dashboard:
 - kubectl configurado
 - Helm 3.x
 - Git
+- Slack configurado (con webhook para alertas)
 
 ### Paso 1: Iniciar Minikube
 Iniciar minikube con los recursos necesarios:
@@ -683,11 +684,21 @@ kubectl get pods -n monitoring -w
 
 ### Paso 3: Desplegar Simple Server
 ```shell
+```shell
 kubectl create namespace simple-server
+```
+```shell
 helm install simple-server ./helm/simple-server --namespace simple-server --set image.repository=ghcr.io/jpalenz77/kc-liberando-productos-practica-final --set image.tag=latest --set metrics.enabled=true
+```
+```shell
 kubectl get pods -n simple-server
+```
+```shell
 kubectl get svc -n simple-server
+```
+```shell
 kubectl get servicemonitor -n simple-server
+```
 ```
 ```shell
 kubectl create namespace simple-server
@@ -708,9 +719,11 @@ kubectl get servicemonitor -n simple-server
 ### Paso 4: Aplicar Dashboard de Grafana
 ```shell
 kubectl apply -f monitoring/grafana/simple-server-dashboard-configmap.yaml
-kubectl get configmap -n monitoring simple-server-dashboard
 ```
 ```shell
+kubectl get configmap -n monitoring simple-server-dashboard
+```
+```
 kubectl apply -f monitoring/grafana/simple-server-dashboard-configmap.yaml
 ```
 ```shell
@@ -719,10 +732,18 @@ kubectl get configmap -n monitoring simple-server-dashboard
 
 ### Paso 5: Acceder a las Interfaces
 ```shell
+```shell
 kubectl port-forward -n simple-server svc/simple-server 8081:8081
+```
+```shell
 kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090
+```
+```shell
 kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
+```
+```shell
 kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9093:9093
+```
 ```
 ```shell
 kubectl port-forward -n simple-server svc/simple-server 8081:8081
