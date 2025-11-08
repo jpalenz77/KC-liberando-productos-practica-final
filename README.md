@@ -46,28 +46,28 @@ Este proyecto implementa una aplicación web simple usando **FastAPI** con los s
 La aplicación expone los siguientes endpoints:
 
 ### 1. **GET /** - Main Endpoint
-```bash
+```shell
 curl http://localhost:8081/
-# Response: {"msg": "Hello World"}
 ```
+Response: `{"msg": "Hello World"}`
 
 ### 2. **GET /bye** - Nuevo Endpoint (Práctica Final)
-```bash
+```shell
 curl http://localhost:8081/bye
-# Response: {"msg": "Bye Bye"}
 ```
+Response: `{"msg": "Bye Bye"}`
 
 ### 3. **GET /health** - Health Check
-```bash
+```shell
 curl http://localhost:8081/health
-# Response: {"health": "ok"}
 ```
+Response: `{"health": "ok"}`
 
 ### 4. **GET /metrics** - Métricas de Prometheus
-```bash
+```shell
 curl http://localhost:8081/metrics
-# Response: métricas en formato Prometheus
 ```
+Response: métricas en formato Prometheus
 
 **Métricas expuestas:**
 - `server_requests_total` - Total de peticiones al servidor
@@ -105,18 +105,11 @@ Los tests cubren todos los endpoints con un **93.18% de cobertura**:
 12. ✅ `test_hypercorn_config()` - Verifica configuración de Hypercorn
 
 ### Ejecutar Tests Localmente
-```bash
-# Crear entorno virtual
+```shell
 python3 -m venv venv
 source venv/bin/activate
-
-# Instalar dependencias
 pip install -r requirements.txt
-
-# Ejecutar tests con cobertura
 pytest --cov --cov-report=term -v
-
-# Ver reporte HTML
 pytest --cov --cov-report=html
 open htmlcov/index.html
 ```
@@ -182,14 +175,9 @@ Para un tag `v1.2.3`, se generan automáticamente:
 - `ghcr.io/jpalenz77/kc-liberando-productos-practica-final:latest`
 
 **Crear un release:**
-```bash
-# Crear tag
+```shell
 git tag -a v1.0.0 -m "Release version 1.0.0"
-
-# Push tag (dispara el workflow)
 git push origin v1.0.0
-
-# Verificar la imagen publicada
 docker pull ghcr.io/jpalenz77/kc-liberando-productos-practica-final:latest
 ```
 
@@ -223,39 +211,24 @@ helm/simple-server/
 - ✅ **Resources**: Limits y requests configurados
 
 ### Instalación del Chart
-```bash
-# Añadir repositorio de Helm (si aún no está)
+```shell
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
-
-# Instalar la aplicación
-helm install simple-server ./helm/simple-server   --namespace simple-server   --create-namespace   --set image.repository=ghcr.io/jpalenz77/kc-liberando-productos-practica-final   --set image.tag=latest
+helm install simple-server ./helm/simple-server --namespace simple-server --create-namespace --set image.repository=ghcr.io/jpalenz77/kc-liberando-productos-practica-final --set image.tag=latest
 ```
 
 ### Verificar el despliegue
-```bash
-# Ver pods
+```shell
 kubectl get pods -n simple-server
-
-# Ver servicios
 kubectl get svc -n simple-server
-
-# Ver HPA
 kubectl get hpa -n simple-server
-
-# Ver ServiceMonitor
 kubectl get servicemonitor -n simple-server
-
-# Logs de la aplicación
 kubectl logs -n simple-server -l app.kubernetes.io/name=simple-server -f
 ```
 
 ### Port-forward para acceder
-```bash
-# Aplicación
+```shell
 kubectl port-forward -n simple-server svc/simple-server 8081:8081
-
-# Probar endpoints
 curl http://localhost:8081/
 curl http://localhost:8081/bye
 curl http://localhost:8081/health
@@ -290,11 +263,8 @@ kubectl get pods -n monitoring
 ```
 
 ### Acceder a Prometheus
-```bash
-# Port-forward
+```shell
 kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090
-
-# Abrir en navegador
 open http://localhost:9090
 ```
 
@@ -467,11 +437,8 @@ kubectl -n simple-server get pods -w
 Detén la ejecución de extress (`Ctrl + C`) en la sesión del pod. El HPA iniciará el *downscaling*.
 
 ### Acceder a Alertmanager
-```bash
-# Port-forward
+```shell
 kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9093:9093
-
-# Abrir en navegador
 open http://localhost:9093
 ```
 
@@ -480,20 +447,13 @@ open http://localhost:9093
 ## 📈 Dashboard de Grafana
 
 ### Acceder a Grafana
-```bash
-# Port-forward
+```shell
 kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
-
-# Abrir en navegador
 open http://localhost:3000
-
-# Credenciales por defecto:
-# Usuario: admin
-# Para obtener la contraseña, ejecuta:
 kubectl get secret prometheus-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+```
 
 > 💡 **Importante**: Guarda esta contraseña en un lugar seguro, la necesitarás para acceder al dashboard
-```
 
 ### Importar Dashboard
 
@@ -530,10 +490,8 @@ El dashboard **"Simple Server - Application Metrics"** incluye:
 6. **Cumulative Requests by Endpoint** - Requests totales acumulados
 
 ### Generar Tráfico para Poblar el Dashboard
-```bash
-# Script para generar tráfico
+```shell
 kubectl port-forward -n simple-server svc/simple-server 8081:8081 &
-
 for i in {1..1000}; do
   curl -s http://localhost:8081/ > /dev/null
   curl -s http://localhost:8081/bye > /dev/null
@@ -579,71 +537,44 @@ Si haces cambios en el dashboard:
 - Git
 
 ### Paso 1: Iniciar Minikube
-```bash
-# Iniciar con recursos suficientes
+```shell
 minikube start --cpus=4 --memory=8192 --driver=docker
-
-# Habilitar addons
 minikube addons enable metrics-server
-
-# Verificar
 kubectl get nodes
 ```
 
 ### Paso 2: Instalar Prometheus Stack
-```bash
-# Añadir repo
+```shell
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
-
-# Crear namespace
 kubectl create namespace monitoring
-
-# Instalar (IMPORTANTE: configurar Slack webhook antes)
 helm install prometheus prometheus-community/kube-prometheus-stack \
   --namespace monitoring --create-namespace \
   --values monitoring/kube-prometheus-stack/values.yaml \
   --set alertmanager.config.global.slack_api_url='https://hooks.slack.com/services/XXX/YYY/ZZZ'
-
-# Esperar a que todos los pods estén ready
 kubectl get pods -n monitoring -w
 ```
 
 ### Paso 3: Desplegar Simple Server
-```bash
-# Crear namespace
+```shell
 kubectl create namespace simple-server
-
-# Instalar con Helm
-helm install simple-server ./helm/simple-server   --namespace simple-server   --set image.repository=ghcr.io/jpalenz77/kc-liberando-productos-practica-final   --set image.tag=latest   --set metrics.enabled=true
-
-# Verificar
+helm install simple-server ./helm/simple-server --namespace simple-server --set image.repository=ghcr.io/jpalenz77/kc-liberando-productos-practica-final --set image.tag=latest --set metrics.enabled=true
 kubectl get pods -n simple-server
 kubectl get svc -n simple-server
 kubectl get servicemonitor -n simple-server
 ```
 
 ### Paso 4: Aplicar Dashboard de Grafana
-```bash
-# Aplicar ConfigMap con el dashboard
+```shell
 kubectl apply -f monitoring/grafana/simple-server-dashboard-configmap.yaml
-
-# Verificar
 kubectl get configmap -n monitoring simple-server-dashboard
 ```
 
 ### Paso 5: Acceder a las Interfaces
-```bash
-# Terminal 1: Aplicación
+```shell
 kubectl port-forward -n simple-server svc/simple-server 8081:8081
-
-# Terminal 2: Prometheus
 kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090
-
-# Terminal 3: Grafana
 kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
-
-# Terminal 4: Alertmanager
 kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9093:9093
 ```
 
@@ -654,23 +585,12 @@ kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9
 - Alertmanager: http://localhost:9093
 
 ### Paso 6: Verificar que Todo Funciona
-```bash
-# 1. Probar endpoints
+```shell
 curl http://localhost:8081/
 curl http://localhost:8081/bye
 curl http://localhost:8081/health
 curl http://localhost:8081/metrics
-
-# 2. Verificar métricas en Prometheus
-# Ir a http://localhost:9090 → Graph
-# Query: server_requests_total
-
-# 3. Ver dashboard en Grafana
-# Ir a http://localhost:3000 → Dashboards → Simple Server - Application Metrics
-
-# 4. Generar una alerta de prueba
 kubectl scale deployment simple-server -n simple-server --replicas=0
-# Esperar 2 minutos → Deberías recibir alerta en Slack
 kubectl scale deployment simple-server -n simple-server --replicas=2
 ```
 
@@ -679,8 +599,7 @@ kubectl scale deployment simple-server -n simple-server --replicas=2
 ## 🔍 Troubleshooting
 
 ### Problema: Tests fallan localmente
-```bash
-# Solución: Verificar entorno virtual y dependencias
+```shell
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
@@ -689,60 +608,37 @@ pytest --cov -v
 ```
 
 ### Problema: Docker image no se construye
-```bash
-# Verificar Dockerfile
+```shell
 docker build -t simple-server:test .
-
-# Ver logs de build
 docker build -t simple-server:test . --progress=plain
 ```
 
 ### Problema: Pods no inician en Kubernetes
-```bash
-# Ver eventos del pod
+```shell
 kubectl describe pod -n simple-server <pod-name>
-
-# Ver logs
 kubectl logs -n simple-server <pod-name>
-
-# Ver si hay problemas con la imagen
 kubectl get events -n simple-server --sort-by='.lastTimestamp'
 ```
 
 ### Problema: Prometheus no encuentra targets
-```bash
-# Verificar ServiceMonitor
+```shell
 kubectl get servicemonitor -n simple-server -o yaml
-
-# Verificar que el Service tiene el label correcto
 kubectl get svc -n simple-server -o yaml
-
-# Ver logs de Prometheus
 kubectl logs -n monitoring prometheus-prometheus-kube-prometheus-prometheus-0
 ```
 
 ### Problema: Dashboard no aparece en Grafana
-```bash
-# Verificar ConfigMap
+```shell
 kubectl get configmap -n monitoring simple-server-dashboard
-
-# Verificar labels
 kubectl get configmap -n monitoring simple-server-dashboard -o yaml | grep labels -A 5
-
-# Reiniciar Grafana
 kubectl rollout restart deployment -n monitoring prometheus-grafana
 ```
 
 ### Problema: Alertas no llegan a Slack
-```bash
-# Verificar configuración de Alertmanager
+```shell
 kubectl get secret -n monitoring alertmanager-prometheus-kube-prometheus-alertmanager -o yaml
-
-# Ver logs de Alertmanager
 kubectl logs -n monitoring alertmanager-prometheus-kube-prometheus-alertmanager-0
-
-# Probar webhook manualmente
-curl -X POST -H 'Content-type: application/json'   --data '{"text":"Test from curl"}'   YOUR_SLACK_WEBHOOK_URL
+curl -X POST -H 'Content-type: application/json' --data '{"text":"Test from curl"}' YOUR_SLACK_WEBHOOK_URL
 ```
 
 ---
