@@ -9,16 +9,22 @@
 ## 📋 Tabla de Contenidos
 
 1. [Descripción del Proyecto](#-descripción-del-proyecto)
-2. [Endpoints Implementados](#-endpoints-implementados)
-3. [Tests Unitarios](#-tests-unitarios)
-4. [CI/CD Pipeline](#-cicd-pipeline)
-5. [Helm Chart](#-helm-chart)
-6. [Monitorización con Prometheus](#-monitorización-con-prometheus)
-7. [Alertas con Alertmanager](#-alertas-con-alertmanager)
-8. [Dashboard de Grafana](#-dashboard-de-grafana)
-9. [Guía de Despliegue](#-guía-de-despliegue)
-10. [Troubleshooting](#-troubleshooting)
-11. [Recursos Adicionales](#-recursos-adicionales)
+2. [Guía de Despliegue](#-guía-de-despliegue)
+   - [Credenciales y Accesos](#-credenciales-y-accesos)
+   - [Requisitos Previos](#requisitos-previos)
+   - [Pasos de Instalación](#paso-1-iniciar-minikube)
+3. [Endpoints y API](#-endpoints-implementados)
+4. [Monitorización](#-monitorización-con-prometheus)
+   - [Prometheus](#-monitorización-con-prometheus)
+   - [Alertmanager](#-alertas-con-alertmanager)
+   - [Dashboard de Grafana](#-dashboard-de-grafana)
+5. [Desarrollo y Testing](#-tests-unitarios)
+   - [Tests Unitarios](#-tests-unitarios)
+   - [CI/CD Pipeline](#-cicd-pipeline)
+6. [Configuración](#-helm-chart)
+   - [Helm Chart](#-helm-chart)
+   - [Troubleshooting](#-troubleshooting)
+7. [Recursos Adicionales](#-recursos-adicionales)
 
 ---
 
@@ -27,7 +33,7 @@
 Este proyecto implementa una aplicación web simple usando **FastAPI** con los siguientes componentes:
 
 - **Aplicación**: Servidor web con múltiples endpoints
-- **Tests**: Cobertura del 89% con pytest
+- **Tests**: Cobertura del 93.18% con pytest
 - **CI/CD**: GitHub Actions para testing y release
 - **Containerización**: Docker image publicada en GHCR
 - **Orquestación**: Helm chart para Kubernetes
@@ -83,12 +89,20 @@ tests/
 
 ### Tests Implementados
 
-Los tests cubren todos los endpoints con un **89% de cobertura**:
+Los tests cubren todos los endpoints con un **93.18% de cobertura**:
 
-1. ✅ `test_read_health()` - Verifica endpoint `/health`
-2. ✅ `test_read_main()` - Verifica endpoint `/`
-3. ✅ `test_read_bye()` - Verifica endpoint `/bye` ⭐ NUEVO
-4. ✅ `test_metrics()` - Verifica endpoint `/metrics` y todas las métricas
+1. ✅ `test_server_initialization()` - Verifica la inicialización del servidor
+2. ✅ `test_server_configuration()` - Verifica la configuración del servidor
+3. ✅ `test_read_health()` - Verifica endpoint `/health`
+4. ✅ `test_read_main()` - Verifica endpoint `/`
+5. ✅ `test_read_bye()` - Verifica endpoint `/bye`
+6. ✅ `test_metrics()` - Verifica endpoint `/metrics`
+7. ✅ `test_multiple_requests()` - Verifica múltiples peticiones
+8. ✅ `test_fastapi_app_metadata()` - Verifica metadata de la aplicación
+9. ✅ `test_concurrent_requests()` - Verifica peticiones concurrentes
+10. ✅ `test_counter_reset()` - Verifica reset de contadores
+11. ✅ `test_metrics_content_type()` - Verifica content type de métricas
+12. ✅ `test_hypercorn_config()` - Verifica configuración de Hypercorn
 
 ### Ejecutar Tests Localmente
 ```bash
@@ -109,19 +123,14 @@ open htmlcov/index.html
 
 ### Resultado Esperado
 ```
-tests/app_test.py::TestSimpleServer::test_read_health PASSED      [ 25%]
-tests/app_test.py::TestSimpleServer::test_read_main PASSED        [ 50%]
-tests/app_test.py::TestSimpleServer::test_read_bye PASSED         [ 75%]
-tests/app_test.py::TestSimpleServer::test_metrics PASSED          [100%]
-
 ---------- coverage: platform linux, python 3.12.3-final-0 -----------
-Name                          Stmts   Miss  Cover
------------------------------------------------------------
-src/__init__.py                   0      0   100%
-src/application/__init__.py       0      0   100%
-src/application/app.py           36      4    89%
------------------------------------------------------------
-TOTAL                            36      4    89%
+Name                          Stmts   Miss Branch BrPart   Cover
+----------------------------------------------------------------
+src/__init__.py                   0      0      0      0 100.00%
+src/application/__init__.py       0      0      0      0 100.00%
+src/application/app.py           36      3      8      0  93.18%
+----------------------------------------------------------------
+TOTAL                            36      3      8      0  93.18%
 ```
 
 ---
@@ -478,11 +487,12 @@ kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
 # Abrir en navegador
 open http://localhost:3000
 
-# Credenciales:
-# User: admin
-# Contraseña:
+# Credenciales por defecto:
+# Usuario: admin
+# Para obtener la contraseña, ejecuta:
 kubectl get secret prometheus-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
-# el resultado de ese comando es la contraseña del admin
+
+> 💡 **Importante**: Guarda esta contraseña en un lugar seguro, la necesitarás para acceder al dashboard
 ```
 
 ### Importar Dashboard
@@ -543,6 +553,22 @@ Si haces cambios en el dashboard:
 ---
 
 ## 🛠️ Guía de Despliegue
+
+### 🔑 Credenciales y Accesos
+
+#### Grafana
+- **Usuario**: admin
+- **Obtener contraseña**:
+  ```bash
+  kubectl get secret prometheus-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+  ```
+  > 💡 **Importante**: Guarda esta contraseña en un lugar seguro
+
+#### URLs de Acceso (después del despliegue)
+- **Aplicación**: http://localhost:8081
+- **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3000
+- **Alertmanager**: http://localhost:9093
 
 ### Requisitos Previos
 

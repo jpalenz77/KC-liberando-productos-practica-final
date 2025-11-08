@@ -1,11 +1,12 @@
 [run]
 source = src
-relative_files = true
-omit = 
-    */tests/*
-    */venv/*
-    */__pycache__/*
-    */site-packages/*
+branch = True
+relative_files = True
+
+[paths]
+source =
+    src/
+    /mnt/c/tests/KC-liberando-productos-practica-final/src/
 
 [report]
 exclude_lines =
@@ -15,8 +16,11 @@ exclude_lines =
     raise NotImplementedError
     if __name__ == .__main__.:
     if TYPE_CHECKING:
+    pass
+    raise ImportError
+precision = 2
+fail_under = 70
 
-[paths]
-source =
-    src/
-    /home/runner/work/*/src/
+[html]
+directory = coverage_html
+title = Coverage Report
