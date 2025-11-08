@@ -683,7 +683,7 @@ kubectl get pods -n monitoring -w
 ```
 
 ### Paso 3: Desplegar Simple Server
-```shell
+
 ```shell
 kubectl create namespace simple-server
 ```
@@ -699,7 +699,7 @@ kubectl get svc -n simple-server
 ```shell
 kubectl get servicemonitor -n simple-server
 ```
-```
+
 ```shell
 kubectl create namespace simple-server
 ```
@@ -732,7 +732,6 @@ kubectl get configmap -n monitoring simple-server-dashboard
 
 ### Paso 5: Acceder a las Interfaces
 ```shell
-```shell
 kubectl port-forward -n simple-server svc/simple-server 8081:8081
 ```
 ```shell
@@ -744,7 +743,7 @@ kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
 ```shell
 kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9093:9093
 ```
-```
+
 ```shell
 kubectl port-forward -n simple-server svc/simple-server 8081:8081
 ```
