@@ -299,8 +299,10 @@ kubectl create namespace monitoring
 
 Instalar Prometheus Operator + Grafana + Alertmanager:
 ```shell
-helm install prometheus prometheus-community/kube-prometheus-stack --namespace monitoring --values monitoring/kube-prometheus-stack/values.yaml
+helm install prometheus prometheus-community/kube-prometheus-stack --namespace monitoring --values monitoring/kube-prometheus-stack/values.yaml \
+   --set alertmanager.config.global.slack_api_url='https://hooks.slack.com/services/XXX/YYY/ZZZ'
 ```
+> 💡 **Importante:** En el parámetro `--set alertmanager.config.global.slack_api_url`, debes poner el webhook de Slack que has obtenido anteriormente. No compartas este webhook públicamente.
 
 ### Verificar instalación
 Ver todos los pods de monitoring:
@@ -616,7 +618,7 @@ Si haces cambios en el dashboard:
   ```bash
   kubectl get secret prometheus-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
   ```
-  > 💡 **Importante**: Guarda esta contraseña en un lugar seguro
+   > 💡 **Importante**: Guarda la contraseña de Grafana y el webhook de Slack en un lugar seguro, los necesitarás para acceder al dashboard y configurar alertas.
 
 #### URLs de Acceso (después del despliegue)
 - **Aplicación**: http://localhost:8081
@@ -633,9 +635,6 @@ Si haces cambios en el dashboard:
 - Git
 
 ### Paso 1: Iniciar Minikube
-```shell
-minikube start --cpus=4 --memory=8192 --driver=docker
-```
 Iniciar minikube con los recursos necesarios:
 ```shell
 minikube start --cpus=4 --memory=8192 --driver=docker
@@ -651,14 +650,6 @@ Verificar que el nodo está funcionando:
 kubectl get nodes
 ```
 
-```shell
-minikube addons enable metrics-server
-```
-
-```shell
-kubectl get nodes
-```
-
 ### Paso 2: Instalar Prometheus Stack
 ```shell
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -670,6 +661,24 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
   --set alertmanager.config.global.slack_api_url='https://hooks.slack.com/services/XXX/YYY/ZZZ'
 kubectl get pods -n monitoring -w
 ```
+```shell
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+```
+```shell
+helm repo update
+```
+```shell
+kubectl create namespace monitoring
+```
+```shell
+helm install prometheus prometheus-community/kube-prometheus-stack \
+   --namespace monitoring --create-namespace \
+   --values monitoring/kube-prometheus-stack/values.yaml \
+   --set alertmanager.config.global.slack_api_url='https://hooks.slack.com/services/XXX/YYY/ZZZ'
+```
+```shell
+kubectl get pods -n monitoring -w
+```
 
 ### Paso 3: Desplegar Simple Server
 ```shell
@@ -679,10 +688,31 @@ kubectl get pods -n simple-server
 kubectl get svc -n simple-server
 kubectl get servicemonitor -n simple-server
 ```
+```shell
+kubectl create namespace simple-server
+```
+```shell
+helm install simple-server ./helm/simple-server --namespace simple-server --set image.repository=ghcr.io/jpalenz77/kc-liberando-productos-practica-final --set image.tag=latest --set metrics.enabled=true
+```
+```shell
+kubectl get pods -n simple-server
+```
+```shell
+kubectl get svc -n simple-server
+```
+```shell
+kubectl get servicemonitor -n simple-server
+```
 
 ### Paso 4: Aplicar Dashboard de Grafana
 ```shell
 kubectl apply -f monitoring/grafana/simple-server-dashboard-configmap.yaml
+kubectl get configmap -n monitoring simple-server-dashboard
+```
+```shell
+kubectl apply -f monitoring/grafana/simple-server-dashboard-configmap.yaml
+```
+```shell
 kubectl get configmap -n monitoring simple-server-dashboard
 ```
 
@@ -691,6 +721,18 @@ kubectl get configmap -n monitoring simple-server-dashboard
 kubectl port-forward -n simple-server svc/simple-server 8081:8081
 kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090
 kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
+kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9093:9093
+```
+```shell
+kubectl port-forward -n simple-server svc/simple-server 8081:8081
+```
+```shell
+kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090
+```
+```shell
+kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
+```
+```shell
 kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9093:9093
 ```
 
