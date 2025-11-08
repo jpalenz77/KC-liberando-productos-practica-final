@@ -292,31 +292,36 @@ curl http://localhost:8081/metrics
 ## 📊 Monitorización con Prometheus
 
 ### Instalación de kube-prometheus-stack
-```bash
-# Crear namespace
+Crear namespace:
+```shell
 kubectl create namespace monitoring
+```
 
-# Instalar Prometheus Operator + Grafana + Alertmanager
-helm install prometheus prometheus-community/kube-prometheus-stack   --namespace monitoring   --values monitoring/kube-prometheus-stack/values.yaml
+Instalar Prometheus Operator + Grafana + Alertmanager:
+```shell
+helm install prometheus prometheus-community/kube-prometheus-stack --namespace monitoring --values monitoring/kube-prometheus-stack/values.yaml
 ```
 
 ### Verificar instalación
-```bash
-# Ver todos los pods de monitoring
+Ver todos los pods de monitoring:
+```shell
 kubectl get pods -n monitoring
-
-# Deberías ver:
-# - prometheus-operator
-# - prometheus-prometheus-kube-prometheus-prometheus-0
-# - alertmanager-prometheus-kube-prometheus-alertmanager-0
-# - prometheus-grafana-xxx
-# - prometheus-kube-state-metrics-xxx
-# - prometheus-prometheus-node-exporter-xxx
 ```
+
+Deberías ver:
+- prometheus-operator
+- prometheus-prometheus-kube-prometheus-prometheus-0
+- alertmanager-prometheus-kube-prometheus-alertmanager-0
+- prometheus-grafana-xxx
+- prometheus-kube-state-metrics-xxx
+- prometheus-prometheus-node-exporter-xxx
 
 ### Acceder a Prometheus
 ```shell
 kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090
+```
+
+```shell
 open http://localhost:9090
 ```
 
@@ -327,23 +332,34 @@ open http://localhost:9090
 3. Debería estar en estado **UP**
 
 ### Queries útiles en Prometheus
+
+Total de requests:
 ```promql
-# Total de requests
 server_requests_total
+```
 
-# Rate de requests por segundo
+Rate de requests por segundo:
+```promql
 rate(server_requests_total[5m])
+```
 
-# Requests al endpoint /bye
+Requests al endpoint /bye:
+```promql
 bye_requests_total
+```
 
-# Rate del endpoint /bye
+Rate del endpoint /bye:
+```promql
 rate(bye_requests_total[5m])
+```
 
-# Comparar todos los endpoints
+Comparar todos los endpoints:
+```promql
 sum by (endpoint) (rate(server_requests_total[5m]))
+```
 
-# Reinicios de la aplicación
+Reinicios de la aplicación:
+```promql
 kube_pod_container_status_restarts_total{pod=~".*simple-server.*"}
 ```
 
@@ -370,30 +386,39 @@ El webhook de Slack contiene información sensible y **NUNCA** debe ser commitea
    - **Copia la URL del webhook**
 
 3. **Instalar Prometheus con el webhook** (usando --set):
-```bash
-# Opción 1: Mediante --set en la línea de comandos (RECOMENDADO)
-helm install prometheus prometheus-community/kube-prometheus-stack   --namespace monitoring   --values monitoring/kube-prometheus-stack/values.yaml   --set alertmanager.config.global.slack_api_url='https://hooks.slack.com/services/YOUR/WEBHOOK/HERE'
+
+**Opción 1: Mediante --set en la línea de comandos (RECOMENDADO)**
+```shell
+helm install prometheus prometheus-community/kube-prometheus-stack --namespace monitoring --values monitoring/kube-prometheus-stack/values.yaml --set alertmanager.config.global.slack_api_url='https://hooks.slack.com/services/YOUR/WEBHOOK/HERE'
 ```
 
 **Opción 2: Crear archivo secrets.yaml local (NO hacer commit)**
-```bash
-# Copiar el ejemplo
-cp monitoring/kube-prometheus-stack/secrets.example.yaml    monitoring/kube-prometheus-stack/secrets.yaml
 
-# Editar con tu webhook real
+Copiar el ejemplo:
+```shell
+cp monitoring/kube-prometheus-stack/secrets.example.yaml monitoring/kube-prometheus-stack/secrets.yaml
+```
+
+Editar con tu webhook real:
+```shell
 nano monitoring/kube-prometheus-stack/secrets.yaml
+```
 
-# Instalar con ambos archivos
-helm install prometheus prometheus-community/kube-prometheus-stack   --namespace monitoring   --values monitoring/kube-prometheus-stack/values.yaml   --values monitoring/kube-prometheus-stack/secrets.yaml
+Instalar con ambos archivos:
+```shell
+helm install prometheus prometheus-community/kube-prometheus-stack --namespace monitoring --values monitoring/kube-prometheus-stack/values.yaml --values monitoring/kube-prometheus-stack/secrets.yaml
 ```
 
 **Opción 3: Variable de entorno**
-```bash
-# Exportar como variable de entorno
-export SLACK_WEBHOOK='https://hooks.slack.com/services/YOUR/WEBHOOK/HERE'
 
-# Usar en helm
-helm install prometheus prometheus-community/kube-prometheus-stack   --namespace monitoring   --values monitoring/kube-prometheus-stack/values.yaml   --set alertmanager.config.global.slack_api_url="$SLACK_WEBHOOK"
+Exportar como variable de entorno:
+```shell
+export SLACK_WEBHOOK='https://hooks.slack.com/services/YOUR/WEBHOOK/HERE'
+```
+
+Usar en helm:
+```shell
+helm install prometheus prometheus-community/kube-prometheus-stack --namespace monitoring --values monitoring/kube-prometheus-stack/values.yaml --set alertmanager.config.global.slack_api_url="$SLACK_WEBHOOK"
 ```
 
 ⚠️ **Recuerda:** El webhook es un secreto. Nunca lo compartas públicamente.
@@ -439,30 +464,38 @@ Este procedimiento utiliza la herramienta **NodeWrecker** para generar una carga
 
 #### Paso 1: Identificar el Pod Target
 Obtén el nombre del pod de simple-server.
-```bash
+```shell
 kubectl get pods -n simple-server
-# Ejemplo: simple-server-b87696dcc-gzzzz
 ```
+Ejemplo de salida: `simple-server-b87696dcc-gzzzz`
 
 #### Paso 2: Acceder al Contenedor 🚪
-Abre una sesión interactiva.
-```bash
-# REEMPLAZA "simple-server-xxxxxxxx-yyyyy" con el nombre del pod
+Abre una sesión interactiva. Reemplaza "simple-server-xxxxxxxx-yyyyy" con el nombre del pod obtenido en el paso anterior:
+```shell
 kubectl -n simple-server exec --stdin --tty simple-server-xxxxxxxx-yyyyy -c simple-server -- /bin/sh
 ```
 
 #### Paso 3: Instalar Dependencias 🛠️
 Dentro del pod, instala las herramientas necesarias (git y go).
-```bash
+```shell
 apk update
+```
+
+```shell
 apk add git go
 ```
 
 #### Paso 4: Clonar y Compilar NodeWrecker
-Descarga y genera el binario ejecutable (extress).
-```bash
+Descarga y genera el binario ejecutable (extress):
+```shell
 git clone https://github.com/jaeg/NodeWrecker.git
+```
+
+```shell
 cd NodeWrecker
+```
+
+```shell
 go build -o extress main.go
 ```
 
@@ -491,6 +524,9 @@ Detén la ejecución de extress (`Ctrl + C`) en la sesión del pod. El HPA inici
 ### Acceder a Alertmanager
 ```shell
 kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9093:9093
+```
+
+```shell
 open http://localhost:9093
 ```
 
@@ -501,7 +537,14 @@ open http://localhost:9093
 ### Acceder a Grafana
 ```shell
 kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
+```
+
+```shell
 open http://localhost:3000
+```
+
+Obtener la contraseña de administrador:
+```shell
 kubectl get secret prometheus-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
 ```
 
@@ -510,12 +553,13 @@ kubectl get secret prometheus-grafana -n monitoring -o jsonpath="{.data.admin-pa
 ### Importar Dashboard
 
 **Opción 1: Mediante ConfigMap (Automático)**
-```bash
-# Aplicar el ConfigMap
-kubectl apply -f monitoring/grafana/simple-server-dashboard-configmap.yaml
 
-# El dashboard aparecerá automáticamente en Grafana
+Aplicar el ConfigMap:
+```shell
+kubectl apply -f monitoring/grafana/simple-server-dashboard-configmap.yaml
 ```
+
+El dashboard aparecerá automáticamente en Grafana.
 
 **Opción 2: Import Manual**
 
@@ -591,7 +635,27 @@ Si haces cambios en el dashboard:
 ### Paso 1: Iniciar Minikube
 ```shell
 minikube start --cpus=4 --memory=8192 --driver=docker
+```
+Iniciar minikube con los recursos necesarios:
+```shell
+minikube start --cpus=4 --memory=8192 --driver=docker
+```
+
+Habilitar el addon metrics-server:
+```shell
 minikube addons enable metrics-server
+```
+
+Verificar que el nodo está funcionando:
+```shell
+kubectl get nodes
+```
+
+```shell
+minikube addons enable metrics-server
+```
+
+```shell
 kubectl get nodes
 ```
 
