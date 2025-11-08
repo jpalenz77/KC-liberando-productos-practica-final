@@ -676,6 +676,7 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
    --values monitoring/kube-prometheus-stack/values.yaml \
    --set alertmanager.config.global.slack_api_url='https://hooks.slack.com/services/XXX/YYY/ZZZ'
 ```
+> 💡 **Importante:** En el parámetro `--set alertmanager.config.global.slack_api_url`, debes poner el webhook de Slack que has obtenido anteriormente. No compartas este webhook públicamente.
 ```shell
 kubectl get pods -n monitoring -w
 ```
@@ -798,13 +799,3 @@ kubectl get secret -n monitoring alertmanager-prometheus-kube-prometheus-alertma
 kubectl logs -n monitoring alertmanager-prometheus-kube-prometheus-alertmanager-0
 curl -X POST -H 'Content-type: application/json' --data '{"text":"Test from curl"}' YOUR_SLACK_WEBHOOK_URL
 ```
-
----
-
-## 📚 Recursos Adicionales
-
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [Prometheus Documentation](https://prometheus.io/docs/)
-- [Grafana Documentation](https://grafana.com/docs/)
-- [Helm Documentation](https://helm.sh/docs/)
-- [Kubernetes Documentation](https://kubernetes.io/docs/)
