@@ -654,16 +654,6 @@ kubectl get nodes
 ### Paso 2: Instalar Prometheus Stack
 ```shell
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-kubectl create namespace monitoring
-helm install prometheus prometheus-community/kube-prometheus-stack \
-  --namespace monitoring --create-namespace \
-  --values monitoring/kube-prometheus-stack/values.yaml \
-  --set alertmanager.config.global.slack_api_url='https://hooks.slack.com/services/XXX/YYY/ZZZ'
-kubectl get pods -n monitoring -w
-```
-```shell
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 ```
 ```shell
 helm repo update
@@ -700,21 +690,7 @@ kubectl get svc -n simple-server
 kubectl get servicemonitor -n simple-server
 ```
 
-```shell
-kubectl create namespace simple-server
-```
-```shell
-helm install simple-server ./helm/simple-server --namespace simple-server --set image.repository=ghcr.io/jpalenz77/kc-liberando-productos-practica-final --set image.tag=latest --set metrics.enabled=true
-```
-```shell
-kubectl get pods -n simple-server
-```
-```shell
-kubectl get svc -n simple-server
-```
-```shell
-kubectl get servicemonitor -n simple-server
-```
+
 
 ### Paso 4: Aplicar Dashboard de Grafana
 ```shell
