@@ -107,10 +107,25 @@ Los tests cubren todos los endpoints con un **93.18% de cobertura**:
 ### Ejecutar Tests Localmente
 ```shell
 python3 -m venv venv
+```
+
+```shell
 source venv/bin/activate
+```
+
+```shell
 pip install -r requirements.txt
+```
+
+```shell
 pytest --cov --cov-report=term -v
+```
+
+```shell
 pytest --cov --cov-report=html
+```
+
+```shell
 open htmlcov/index.html
 ```
 
@@ -145,8 +160,9 @@ El proyecto implementa dos workflows de GitHub Actions:
 6. Comentario automático en PRs con el coverage
 
 **Ejemplo de ejecución:**
-```bash
-# Ver en GitHub Actions
+Ver en GitHub Actions:
+
+```shell
 https://github.com/jpalenz77/KC-liberando-productos-practica-final/actions
 ```
 
@@ -177,7 +193,13 @@ Para un tag `v1.2.3`, se generan automáticamente:
 **Crear un release:**
 ```shell
 git tag -a v1.0.0 -m "Release version 1.0.0"
+```
+
+```shell
 git push origin v1.0.0
+```
+
+```shell
 docker pull ghcr.io/jpalenz77/kc-liberando-productos-practica-final:latest
 ```
 
@@ -213,25 +235,55 @@ helm/simple-server/
 ### Instalación del Chart
 ```shell
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+```
+
+```shell
 helm repo update
+```
+
+```shell
 helm install simple-server ./helm/simple-server --namespace simple-server --create-namespace --set image.repository=ghcr.io/jpalenz77/kc-liberando-productos-practica-final --set image.tag=latest
 ```
 
 ### Verificar el despliegue
 ```shell
 kubectl get pods -n simple-server
+```
+
+```shell
 kubectl get svc -n simple-server
+```
+
+```shell
 kubectl get hpa -n simple-server
+```
+
+```shell
 kubectl get servicemonitor -n simple-server
+```
+
+```shell
 kubectl logs -n simple-server -l app.kubernetes.io/name=simple-server -f
 ```
 
 ### Port-forward para acceder
 ```shell
 kubectl port-forward -n simple-server svc/simple-server 8081:8081
+```
+
+```shell
 curl http://localhost:8081/
+```
+
+```shell
 curl http://localhost:8081/bye
+```
+
+```shell
 curl http://localhost:8081/health
+```
+
+```shell
 curl http://localhost:8081/metrics
 ```
 
